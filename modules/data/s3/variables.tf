@@ -22,23 +22,23 @@ variable "object_ownership" {
 }
 
 variable "block_public_acls" {
-  type        = bool
-  default     = true
+  type    = bool
+  default = true
 }
 
 variable "block_public_policy" {
-  type        = bool
-  default     = true
+  type    = bool
+  default = true
 }
 
 variable "ignore_public_acls" {
-  type        = bool
-  default     = true
+  type    = bool
+  default = true
 }
 
 variable "restrict_public_buckets" {
-  type        = bool
-  default     = true
+  type    = bool
+  default = true
 }
 
 variable "enable_versioning" {
@@ -95,10 +95,10 @@ variable "access_log_prefix" {
 variable "lifecycle_rules" {
   description = "List of lifecycle rules."
   type = list(object({
-    id                                     = string
-    enabled                                = bool
-    prefix                                 = optional(string)
-    transitions                            = list(object({
+    id      = string
+    enabled = bool
+    prefix  = optional(string)
+    transitions = list(object({
       days          = number
       storage_class = string
     }))

@@ -1,0 +1,18 @@
+repos:
+- repo: https://github.com/antonbabenko/pre-commit-terraform
+  rev: v1.104.0 # Get the latest from: https://github.com/antonbabenko/pre-commit-terraform/releases
+  hooks:
+    - id: terraform_fmt
+    - id: terraform_tflint
+   # - id: terraform_trivy
+   # - id: terraform_checkov
+    - id: terraform_docs
+      args:
+        - --args=--output-file=README.md
+        - --args=--output-mode=inject
+        - --args=--sort-by=required
+    - id: infracost_breakdown
+      args:
+        - --args=--path=.
+      verbose: true # Always show costs
+    

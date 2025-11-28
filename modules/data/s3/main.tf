@@ -59,9 +59,9 @@ resource "aws_s3_bucket_versioning" "this" {
 resource "aws_kms_key" "this" {
   count = var.create_kms_key && var.sse_algorithm == "aws:kms" ? 1 : 0
 
-  description         = "KMS key for S3 bucket ${var.bucket_name}"
+  description             = "KMS key for S3 bucket ${var.bucket_name}"
   deletion_window_in_days = 7
-  enable_key_rotation = true
+  enable_key_rotation     = true
 
   tags = merge(
     {
@@ -141,8 +141,8 @@ resource "aws_s3_bucket_acl" "logs" {
 
 # Attach logging to main bucket
 resource "aws_s3_bucket_logging" "this" {
-  count = var.enable_access_logging ? 1 : 0
-  bucket = aws_s3_bucket.this.id
+  count         = var.enable_access_logging ? 1 : 0
+  bucket        = aws_s3_bucket.this.id
   target_prefix = var.access_log_prefix
   target_bucket = var.create_logs_bucket ? aws_s3_bucket.logs[0].id : var.existing_logs_bucket_name
 

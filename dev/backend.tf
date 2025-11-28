@@ -15,17 +15,17 @@ terraform {
 # ----------------------------------
 
 module "backen-bucket" {
-  source = "../modules/data/s3"
+  source            = "../modules/data/s3"
   bucket_name       = "vinay-terraform-state-dev"
-    force_destroy     = false
-    enable_versioning = true
-  
-    # Public access settings (defaults shown for clarity)
-    acl                     = "private"
-    block_public_acls       = true
-    block_public_policy     = true
-    ignore_public_acls      = true
-    restrict_public_buckets = true
-    object_ownership        = "BucketOwnerPreferred"
+  force_destroy     = false
+  enable_versioning = true
+
+  # Public access settings (defaults shown for clarity)
+  acl                     = "private"
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+  object_ownership        = "BucketOwnerPreferred"
 
 }
