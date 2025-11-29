@@ -13,8 +13,9 @@ provider "aws" {
   allowed_account_ids = var.allowed_account_ids
   default_tags {
     tags = {
-      Owner      = "vinay"
-      Managed_by = "terraform"
+      Owner       = "vinay"
+      Managed_by  = "terraform"
+      Environment = "dev"
     }
   }
 }
