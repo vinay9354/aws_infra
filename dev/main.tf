@@ -12,7 +12,90 @@ module "vpc" {
   instance_tenancy     = "default"
   create_igw           = true
 
-  tags = {
-    Name = "vinay-infra-vpc"
-  }
 }
+
+#---------------------------------------------------------------------------
+# Public Subnets (with Internet Gateway routing)
+# --------------------------------------------------------------------------
+module "public_subnets" {
+  source = "../modules/networking/subnets"
+
+  for_each = var.public_subnets
+
+  vpc_id            = module.vpc.vpc_id
+  name              = "${var.environment}-${each.key}-pb-subnet-${substr(each.value.availability_zone, length(each.value.availability_zone) - 2, 2)}"
+  cidr_block        = each.value.cidr_block
+  availability_zone = each.value.availability_zone
+
+  # Public subnet settings
+  map_public_ip_on_launch = true
+
+  # Main route: Internet Gateway for public internet access
+  route_cidr_block  = "0.0.0.0/0"
+  route_target_type = "igw"
+  route_target_id   = module.vpc.igw_id
+
+  # Additional routes
+  extra_routes = each.value.extra_routes
+
+  # Merge common tags, environment-specific tags, and subnet-specific tags
+  tags = merge(
+    {
+      Environment = var.environment
+      Type        = "public"
+    },
+    each.value.tags
+  )
+
+  # Merge default subnet tags with subnet-specific tags
+  subnet_tags = merge(
+    {
+      SubnetType = "Public"
+    },
+    each.value.subnet_tags
+  )
+}
+
+# #---------------------------------------------------------------
+# # Private Subnets (with NAT Gateway routing)
+# # --------------------------------------------------------------
+# module "private_subnets" {
+#   source = "../modules/networking/subnets"
+
+#   for_each = var.private_subnets
+
+#   vpc_id            = module.vpc.vpc_id
+#   name              = "${var.environment}-${each.key}"
+#   cidr_block        = each.value.cidr_block
+#   availability_zone = each.value.availability_zone
+
+#   # Private subnet settings
+#   map_public_ip_on_launch = false
+
+#   # Main route: NAT Gateway for outbound internet access
+#   route_cidr_block  = "0.0.0.0/0"
+#   route_target_type = "natgw"
+#   route_target_id   = each.value.nat_gateway_id
+
+#   # Additional routes
+#   extra_routes = each.value.extra_routes
+
+#   # Merge common tags, environment-specific tags, and subnet-specific tags
+#   tags = merge(
+#     {
+#       Environment = var.environment
+#       Type        = "private"
+#     },
+#     each.value.tags
+#   )
+
+#   # Merge default subnet tags with subnet-specific tags
+#   subnet_tags = merge(
+#     {
+#       SubnetType = "Private"
+#     },
+#     each.value.subnet_tags
+#   )
+# }
+
+

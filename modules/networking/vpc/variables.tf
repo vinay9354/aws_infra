@@ -123,6 +123,18 @@ variable "flow_logs_retention_in_days" {
   default     = 30
 }
 
+variable "flow_logs_log_group_skip_destroy" {
+  description = "Enable deletion protection for Flow Logs CloudWatch Log Group (skip_destroy)"
+  type        = bool
+  default     = false
+}
+
+variable "flow_logs_enable_kms_encryption" {
+  description = "Enable KMS encryption for Flow Logs CloudWatch Log Group using AWS-managed key (aws/logs)"
+  type        = bool
+  default     = true
+}
+
 variable "flow_logs_s3_bucket_arn" {
   description = "S3 bucket ARN for VPC Flow Logs (required if destination type is s3)"
   type        = string

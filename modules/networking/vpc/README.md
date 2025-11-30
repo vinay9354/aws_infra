@@ -9,9 +9,34 @@ This Terraform module creates an AWS Virtual Private Cloud (VPC) with optional f
 - IPv6 support with Amazon-provided CIDR blocks
 - VPC Flow Logs with CloudWatch Logs or S3 destination support
 - Automatic IAM role creation for CloudWatch Logs flow logs
+- KMS encryption support for CloudWatch Logs using AWS-managed keys
+- Deletion protection for CloudWatch Log Groups
 - DNS support and hostname configuration
 - Instance tenancy options (default or dedicated)
 - Flexible tagging for all resources
+</text>
+
+<old_text line=62>
+### VPC with Flow Logs to CloudWatch
+
+```hcl
+module "vpc" {
+  source = "./modules/networking/vpc"
+
+  name       = "my-vpc"
+  cidr_block = "10.0.0.0/16"
+
+  # Enable Flow Logs
+  enable_flow_logs              = true
+  flow_logs_destination_type    = "cloud-watch-logs"
+  flow_logs_traffic_type        = "ALL"
+  flow_logs_retention_in_days   = 30
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
 
 ## Usage
 
@@ -72,6 +97,34 @@ module "vpc" {
 
   tags = {
     Environment = "production"
+  }
+}
+```
+
+### VPC with Flow Logs - Enhanced Security (KMS Encryption + Deletion Protection)
+
+```hcl
+module "vpc" {
+  source = "./modules/networking/vpc"
+
+  name       = "my-secure-vpc"
+  cidr_block = "10.0.0.0/16"
+
+  # Enable Flow Logs with enhanced security features
+  enable_flow_logs                    = true
+  flow_logs_destination_type          = "cloud-watch-logs"
+  flow_logs_traffic_type              = "ALL"
+  flow_logs_retention_in_days         = 90
+  
+  # Enable KMS encryption using AWS-managed key (default: true)
+  flow_logs_enable_kms_encryption     = true
+  
+  # Enable deletion protection to prevent accidental deletion
+  flow_logs_log_group_skip_destroy    = true
+
+  tags = {
+    Environment = "production"
+    Security    = "high"
   }
 }
 ```
@@ -197,6 +250,8 @@ module "vpc" {
 | flow_logs_traffic_type | The type of traffic to log: ACCEPT, REJECT, or ALL | `string` | `"ALL"` | no |
 | flow_logs_log_group_name | Custom CloudWatch Log Group name for VPC Flow Logs (optional). If null, a default name is used. | `string` | `null` | no |
 | flow_logs_retention_in_days | Retention in days for Flow Logs CloudWatch Log Group | `number` | `30` | no |
+| flow_logs_log_group_skip_destroy | Enable deletion protection for Flow Logs CloudWatch Log Group (skip_destroy) | `bool` | `false` | no |
+| flow_logs_enable_kms_encryption | Enable KMS encryption for Flow Logs CloudWatch Log Group using AWS-managed key (aws/logs) | `bool` | `true` | no |
 | flow_logs_s3_bucket_arn | S3 bucket ARN for VPC Flow Logs (required if destination type is s3) | `string` | `null` | conditional*** |
 | flow_logs_s3_key_prefix | Prefix for S3 objects when destination type is s3 | `string` | `"vpc-flow-logs/"` | no |
 | flow_logs_max_aggregation_interval | Maximum interval of time during which a flow is captured and aggregated into one flow log record (60 or 600 seconds) | `number` | `600` | no |
@@ -232,6 +287,7 @@ This module creates the following AWS resources:
 - `aws_cloudwatch_log_group.flow_logs` - CloudWatch Log Group for Flow Logs (if using CloudWatch destination)
 - `aws_iam_role.flow_logs` - IAM role for Flow Logs to write to CloudWatch (if using CloudWatch destination)
 - `aws_iam_role_policy.flow_logs` - IAM policy for Flow Logs (if using CloudWatch destination)
+- `data.aws_kms_key.cloudwatch_logs` - AWS-managed KMS key for CloudWatch Logs encryption (if encryption is enabled)
 
 ## VPC Flow Logs
 
@@ -243,6 +299,8 @@ When using CloudWatch Logs as the destination:
 - An IAM role and policy are automatically created with the necessary permissions
 - You can customize the log group name and retention period
 - Default log group name format: `/aws/vpc/{vpc-name}-flow-logs`
+- **KMS Encryption**: Enabled by default using AWS-managed key (`alias/aws/logs`) - no additional KMS key creation required
+- **Deletion Protection**: Optional `skip_destroy` protection prevents accidental deletion of log groups
 
 ### S3
 When using S3 as the destination:
@@ -256,6 +314,8 @@ When using S3 as the destination:
 - **Traffic Type**: Choose to log `ACCEPT`, `REJECT`, or `ALL` traffic
 - **Aggregation Interval**: Set to `60` seconds for detailed logs or `600` seconds (10 minutes) for less granular logs
 - **Retention**: Configure CloudWatch log retention (only applies to CloudWatch destination)
+- **KMS Encryption**: Automatically enabled using AWS-managed KMS key for CloudWatch Logs - can be disabled if needed
+- **Deletion Protection**: Optionally enable `skip_destroy` to prevent accidental deletion of CloudWatch Log Groups
 
 ## Notes
 
@@ -265,6 +325,8 @@ When using S3 as the destination:
 - VPC Flow Logs are optional and controlled by the `enable_flow_logs` variable
 - When using S3 as the Flow Logs destination, ensure your S3 bucket has the proper bucket policy
 - IAM resources for Flow Logs are only created when using CloudWatch Logs destination
+- KMS encryption for CloudWatch Logs uses the AWS-managed key (`alias/aws/logs`) by default - enabled automatically
+- Deletion protection (`skip_destroy`) for CloudWatch Log Groups can be enabled to prevent accidental deletion
 - All resources inherit tags from the `tags` variable, with specific resource tags taking precedence
 - Instance tenancy can be set to "default" or "dedicated" based on your requirements
 
@@ -300,12 +362,13 @@ module "prod_vpc" {
   create_igw       = true
   enable_ipv6      = true
 
-  # Production Flow Logs to S3 for long-term retention
-  enable_flow_logs           = true
-  flow_logs_destination_type = "s3"
-  flow_logs_s3_bucket_arn    = "arn:aws:s3:::prod-vpc-flow-logs"
-  flow_logs_s3_key_prefix    = "prod-vpc/"
-  flow_logs_traffic_type     = "ALL"
+  # Production Flow Logs to CloudWatch with encryption and deletion protection
+  enable_flow_logs                    = true
+  flow_logs_destination_type          = "cloud-watch-logs"
+  flow_logs_traffic_type              = "ALL"
+  flow_logs_retention_in_days         = 365
+  flow_logs_enable_kms_encryption     = true   # AWS-managed KMS encryption
+  flow_logs_log_group_skip_destroy    = true   # Deletion protection
 
   tags = {
     Environment = "production"
@@ -328,6 +391,8 @@ module "security_vpc" {
   flow_logs_traffic_type              = "REJECT"
   flow_logs_max_aggregation_interval  = 60  # More granular logs
   flow_logs_retention_in_days         = 90
+  flow_logs_enable_kms_encryption     = true   # Encrypted by default
+  flow_logs_log_group_skip_destroy    = true   # Protect from deletion
 
   tags = {
     Environment = "production"

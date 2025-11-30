@@ -1,0 +1,188 @@
+# ----------------
+# Common Variables
+# ----------------
+aws_region          = "ap-south-1"
+allowed_account_ids = [516311263797] #Dev Account ID
+environment = "vinay-inra-dev"
+# -----------------------------------------------------------------------------------
+# Subnets Configuration
+# https://visualsubnetcalc.com/index.html?c=1N4IgbiBcIEwgNCARlEBGA7DAdDADNgXgPRoBsCIAzlKHgOa0h4AWTeAluwFbsDW7ADbsAtuwB27APZNJ0AKYBjGAFo0IAL6I0MyKDkglquBq3o5wU9rF6r6YbbNoBj7b1fouHtG0emgA
+# -----------------------------------------------------------------------------------
+# Public Subnets Configuration
+# -----------------------------------------------------------------------------------
+public_subnets = {
+  ec2-1 = {
+    cidr_block        = "172.20.0.0/24
+    availability_zone = "ap-south-1a"
+    # extra_routes = [
+    #   # Example: Route to Transit Gateway for on-premises network
+    #   {
+    #     destination_cidr_block      = "10.0.0.0/8"
+    #     destination_ipv6_cidr_block = null
+    #     destination_prefix_list_id  = null
+    #     target_type                 = "tgw"
+    #     target_id                   = "tgw-xxxxxxxxxxxxxxxxx" # Replace with actual TGW ID
+    #   }
+    # ]
+    # # Subnet-specific tags
+    # tags = {
+    #   Tier       = "web"
+    #   Purpose    = "load-balancers"
+    #   Workload   = "frontend"
+    #   Compliance = "pci-dss"
+    # }
+    # subnet_tags = {
+    #   Network                = "dmz"
+    #   InternetFacing         = "true"
+    #   kubernetes_io_role_elb = "1" # For AWS Load Balancer Controller
+    # }
+  }
+
+
+  ec2-2 = {
+    cidr_block        = "172.20.1.0/24"
+    availability_zone = "ap-south-1b"
+    # extra_routes = [
+    #   # Example: Route to VPC Peering Connection
+    #   {
+    #     destination_cidr_block      = "192.168.0.0/16"
+    #     destination_ipv6_cidr_block = null
+    #     destination_prefix_list_id  = null
+    #     target_type                 = "pcx"
+    #     target_id                   = "pcx-xxxxxxxxxxxxxxxxx" # Replace with actual VPC Peering Connection ID
+    #   }
+    # ]
+    # # Subnet-specific tags
+    # tags = {
+    #   Tier       = "web"
+    #   Purpose    = "load-balancers"
+    #   Workload   = "frontend"
+    #   Compliance = "pci-dss"
+    # }
+    # subnet_tags = {
+    #   Network                = "dmz"
+    #   InternetFacing         = "true"
+    #   kubernetes_io_role_elb = "1"
+    # }
+  }
+
+  # public-1c = {
+  #   cidr_block        = "172.20.3.0/24"
+  #   availability_zone = "us-east-1c"
+  #   extra_routes      = [] # No extra routes for this subnet
+  #   # Subnet-specific tags
+  #   tags = {
+  #     Tier     = "web"
+  #     Purpose  = "nat-gateways"
+  #     Workload = "network"
+  #   }
+  #   subnet_tags = {
+  #     Network                = "public"
+  #     InternetFacing         = "true"
+  #     kubernetes_io_role_elb = "1"
+  #   }
+  # }
+}
+
+# # -----------------------------------------------------------------------------------
+# # Private Subnets Configuration
+# # -----------------------------------------------------------------------------------
+# private_subnets = {
+#   private-1a = {
+#     cidr_block        = "172.20.11.0/24"
+#     availability_zone = "us-east-1a"
+#     nat_gateway_id    = "nat-xxxxxxxxxxxxxxxxx" # Replace with actual NAT Gateway ID
+#     extra_routes = [
+#       # Example: Route to Transit Gateway for on-premises access
+#       {
+#         destination_cidr_block      = "10.0.0.0/8"
+#         destination_ipv6_cidr_block = null
+#         destination_prefix_list_id  = null
+#         target_type                 = "tgw"
+#         target_id                   = "tgw-xxxxxxxxxxxxxxxxx" # Replace with actual TGW ID
+#       },
+#       # Example: Route to VPC Endpoint (S3 Gateway)
+#       {
+#         destination_cidr_block      = null
+#         destination_ipv6_cidr_block = null
+#         destination_prefix_list_id  = "pl-xxxxxxxxxxxxxxxxx" # AWS S3 prefix list ID
+#         target_type                 = "vpce"
+#         target_id                   = "vpce-xxxxxxxxxxxxxxxxx" # Replace with actual VPCE ID
+#       }
+#     ]
+#     # Subnet-specific tags
+#     tags = {
+#       Tier       = "app"
+#       Purpose    = "application-servers"
+#       Workload   = "backend-api"
+#       Compliance = "hipaa"
+#       Backup     = "daily"
+#     }
+#     subnet_tags = {
+#       Network                         = "internal"
+#       InternetFacing                  = "false"
+#       kubernetes_io_role_internal_elb = "1"               # For internal load balancers
+#       karpenter_sh_discovery          = "vinay-infra-dev" # For Karpenter node discovery
+#     }
+#   }
+
+#   private-1b = {
+#     cidr_block        = "172.20.12.0/24"
+#     availability_zone = "us-east-1b"
+#     nat_gateway_id    = "nat-yyyyyyyyyyyyyyyyy" # Replace with actual NAT Gateway ID
+#     extra_routes = [
+#       # Example: Route to another VPC via peering
+#       {
+#         destination_cidr_block      = "192.168.0.0/16"
+#         destination_ipv6_cidr_block = null
+#         destination_prefix_list_id  = null
+#         target_type                 = "pcx"
+#         target_id                   = "pcx-xxxxxxxxxxxxxxxxx" # Replace with actual VPC Peering Connection ID
+#       },
+#       # Example: Route to specific network via Transit Gateway
+#       {
+#         destination_cidr_block      = "172.16.0.0/12"
+#         destination_ipv6_cidr_block = null
+#         destination_prefix_list_id  = null
+#         target_type                 = "tgw"
+#         target_id                   = "tgw-xxxxxxxxxxxxxxxxx" # Replace with actual TGW ID
+#       }
+#     ]
+#     # Subnet-specific tags
+#     tags = {
+#       Tier       = "app"
+#       Purpose    = "application-servers"
+#       Workload   = "backend-api"
+#       Compliance = "hipaa"
+#       Backup     = "daily"
+#     }
+#     subnet_tags = {
+#       Network                         = "internal"
+#       InternetFacing                  = "false"
+#       kubernetes_io_role_internal_elb = "1"
+#       karpenter_sh_discovery          = "vinay-infra-dev"
+#     }
+#   }
+
+#   private-1c = {
+#     cidr_block        = "172.20.13.0/24"
+#     availability_zone = "us-east-1c"
+#     nat_gateway_id    = "nat-zzzzzzzzzzzzzzzzz" # Replace with actual NAT Gateway ID
+#     extra_routes      = []                      # No extra routes for this subnet
+#     # Subnet-specific tags for database tier
+#     tags = {
+#       Tier       = "data"
+#       Purpose    = "databases"
+#       Workload   = "rds-postgres"
+#       Compliance = "sox"
+#       Backup     = "hourly"
+#       Encrypted  = "true"
+#     }
+#     subnet_tags = {
+#       Network        = "isolated"
+#       InternetFacing = "false"
+#       DatabaseTier   = "true"
+#       DBEngine       = "postgres"
+#     }
+#   }
+# }

@@ -33,16 +33,25 @@ resource "aws_internet_gateway" "this" {
   )
 }
 
+# Data source for AWS-managed KMS key for CloudWatch Logs
+data "aws_kms_key" "cloudwatch_logs" {
+  count = local.flow_logs_to_cloudwatch && var.flow_logs_enable_kms_encryption ? 1 : 0
+
+  key_id = "alias/aws/logs"
+}
+
 # Optional VPC Flow Logs
 resource "aws_cloudwatch_log_group" "flow_logs" {
   count = local.flow_logs_to_cloudwatch ? 1 : 0
 
   name              = coalesce(var.flow_logs_log_group_name, "/aws/vpc/${var.name}-flow-logs")
   retention_in_days = var.flow_logs_retention_in_days
+  skip_destroy      = var.flow_logs_log_group_skip_destroy
+  kms_key_id        = var.flow_logs_enable_kms_encryption ? data.aws_kms_key.cloudwatch_logs[0].arn : null
 
   tags = merge(
     {
-      Name = "${var.name}-vpc-flow-logs"
+      Name = "${var.name}-flow-logs"
     },
     var.tags
   )
@@ -51,7 +60,7 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
 resource "aws_iam_role" "flow_logs" {
   count = local.flow_logs_to_cloudwatch ? 1 : 0
 
-  name = "${var.name}-vpc-flow-logs-role"
+  name = "${var.name}-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -66,13 +75,18 @@ resource "aws_iam_role" "flow_logs" {
     ]
   })
 
-  tags = var.tags
+  tags = merge(
+    {
+      Name = "${var.name}-flow-logs-role"
+    },
+    var.tags
+  )
 }
 
 resource "aws_iam_role_policy" "flow_logs" {
   count = local.flow_logs_to_cloudwatch ? 1 : 0
 
-  name = "${var.name}-vpc-flow-logs-policy"
+  name = "${var.name}-flow-logs-policy"
   role = aws_iam_role.flow_logs[0].id
 
   policy = jsonencode({
@@ -98,6 +112,7 @@ resource "aws_flow_log" "this" {
 
   vpc_id = aws_vpc.this.id
 
+
   traffic_type             = var.flow_logs_traffic_type
   log_destination_type     = var.flow_logs_destination_type
   max_aggregation_interval = var.flow_logs_max_aggregation_interval
@@ -106,5 +121,11 @@ resource "aws_flow_log" "this" {
   log_destination = local.flow_logs_to_cloudwatch ? aws_cloudwatch_log_group.flow_logs[0].arn : (local.flow_logs_to_s3 ? "${var.flow_logs_s3_bucket_arn}/${trim(var.flow_logs_s3_key_prefix, "/")}/" : null)
 
   iam_role_arn = local.flow_logs_to_cloudwatch ? aws_iam_role.flow_logs[0].arn : null
-}
 
+  tags = merge(
+    {
+      Name = "${var.name}-flow-logs"
+    },
+    var.tags
+  )
+}
