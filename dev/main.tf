@@ -1,6 +1,6 @@
-#--------------
+#-------------------------------------------
 # VPC module
-# -------------
+# ------------------------------------------
 module "vpc" {
   source = "../modules/networking/vpc"
 
@@ -79,6 +79,24 @@ module "private_subnets" {
 
   # Additional routes
   extra_routes = each.value.extra_routes
+}
+
+# -----------------------------
+# Security Group Module
+# -----------------------------
+module "security_group" {
+  source   = "../modules/security/security_group"
+  for_each = local.security_groups
+
+  # Use the map key as the SG name (app, db, bastion, etc.)
+  name        = each.key
+  description = each.value.description
+  vpc_id      = module.vpc.vpc_id
+
+  tags = lookup(each.value, "tags", {})
+
+  ingress_rules = each.value.ingress_rules
+  egress_rules  = lookup(each.value, "egress_rules", [])
 }
 
 

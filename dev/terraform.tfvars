@@ -33,3 +33,4 @@ private_subnets = {
     availability_zone = "ap-south-1b"
   }
 }
+
