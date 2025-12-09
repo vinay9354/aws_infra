@@ -1,17 +1,17 @@
 # EC2 Instance Module
 
-This Terraform module creates and manages AWS EC2 instances with comprehensive configuration options including IAM role management, key pair generation, spot instance support, network interface creation, and instance state management.
+This Terraform module creates and manages AWS EC2 instances with comprehensive configuration options including IAM role management, key pair generation, spot instance support, network interface creation, block device configuration, and instance state management.
 
 ## Features
 
-- **Instance Types**: Support for both on-demand and spot instances
+- **Instance Types**: Support for both on-demand and Spot instances
 - **IAM Role Management**: Create new IAM roles or use existing ones with automatic SSM and CloudWatch policies
 - **Key Pair Management**: Generate key pairs and securely store them in SSM Parameter Store
 - **Network Configuration**: Create or attach network interfaces with flexible configuration
 - **Storage Options**: Support for root, additional EBS volumes, and ephemeral storage
 - **Instance State Management**: Control instance state (running/stopped) through Terraform
 - **Elastic IP Support**: Optional EIP allocation and association
-- **Security**: IMDSv2 enabled by default, encryption by default
+- **Security**: IMDSv2 enabled by default, encryption recommended for EBS
 - **Monitoring**: Optional detailed monitoring and CloudWatch integration
 - **Lifecycle Management**: Prevent unnecessary instance recreation
 
@@ -147,7 +147,7 @@ module "ec2_spot_instance" {
   spot_instance_interruption_behavior = "stop"       # hibernate, stop, or terminate
   spot_wait_for_fulfillment          = true
 
-  # Optional: set validity period
+  # Optional: set validity period (RFC3339 UTC)
   spot_valid_until = "2024-12-31T23:59:59Z"
 
   tags = {
@@ -388,6 +388,8 @@ module "ec2_spot_dev" {
 
 ## Inputs
 
+> The Inputs section below is kept in the original README format but updated to match `variables.tf` (types, defaults and validations). Deprecated / removed variables (e.g., `spot_block_duration_minutes`) are not listed.
+
 ### Core Instance Configuration
 
 | Name | Description | Type | Default | Required |
@@ -396,89 +398,116 @@ module "ec2_spot_dev" {
 | name | Name to be used on EC2 instance created | `string` | n/a | yes |
 | ami_id | ID of AMI to use for the instance | `string` | n/a | yes |
 | instance_type | The type of instance to start | `string` | `"t3.micro"` | no |
+| key_name | Key name of the Key Pair to use for the instance (used if `create_key_pair` is false) | `string` | `null` | no |
 | subnet_id | The VPC Subnet ID to launch in | `string` | n/a | yes |
 | availability_zone | AZ to start the instance in | `string` | `null` | no |
 | security_group_ids | A list of security group IDs to associate with | `list(string)` | `[]` | no |
-| associate_public_ip_address | Whether to associate a public IP address | `bool` | `false` | no |
+| associate_public_ip_address | Whether to associate a public IP address with an instance in a VPC | `bool` | `false` | no |
 | user_data | The user data to provide when launching the instance | `string` | `null` | no |
-| user_data_base64 | Base64-encoded binary data | `string` | `null` | no |
+| user_data_base64 | Can be used instead of `user_data` to pass base64-encoded binary data directly | `string` | `null` | no |
+| enable_monitoring | If true, the launched EC2 instance will have detailed monitoring enabled | `bool` | `false` | no |
+| ebs_optimized | If true, the launched EC2 instance will be EBS-optimized | `bool` | `true` | no |
+| source_dest_check | Controls if traffic is routed to the instance when the destination address does not match the instance | `bool` | `true` | no |
+| disable_api_termination | If true, enables EC2 Instance Termination Protection | `bool` | `false` | no |
+| instance_initiated_shutdown_behavior | Shutdown behavior for the instance (`stop` or `terminate`) | `string` | `"stop"` | no |
+| placement_group | The Placement Group to start the instance in | `string` | `null` | no |
+| tenancy | The tenancy of the instance (`default`, `dedicated`, or `host`) | `string` | `"default"` | no |
+| host_id | ID of a dedicated host that the instance will be assigned to | `string` | `null` | no |
+| cpu_core_count | Sets the number of CPU cores for an instance | `number` | `null` | no |
+| cpu_threads_per_core | Sets the number of CPU threads per core for an instance | `number` | `null` | no |
+| cpu_credits | The credit option for CPU usage (`unlimited` or `standard`) | `string` | `null` | no |
+| tags | A mapping of tags to assign to all resources | `map(string)` | `{}` | no |
+| volume_tags | A mapping of tags to assign to the devices created by the instance at launch time | `map(string)` | `{}` | no |
+| create_eip | Whether to create an Elastic IP for the instance | `bool` | `false` | no |
 
-### IAM Role Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| create_iam_role | Whether to create a new IAM role | `bool` | `false` | no |
-| existing_iam_role_name | Name of existing IAM role to use | `string` | `null` | no |
-| iam_instance_profile | IAM Instance Profile to use (if not creating role) | `string` | `null` | no |
-| attach_ssm_policy | Attach AmazonSSMManagedInstanceCore policy | `bool` | `true` | no |
-| attach_cloudwatch_agent_policy | Attach CloudWatchAgentServerPolicy | `bool` | `true` | no |
-| additional_iam_policy_arns | Additional IAM policy ARNs to attach | `list(string)` | `[]` | no |
-
-### Key Pair Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| create_key_pair | Whether to create a new key pair | `bool` | `false` | no |
-| key_name | Key name to use (if not creating) | `string` | `null` | no |
-| key_pair_name | Name for the new key pair | `string` | `null` | no |
-| key_pair_algorithm | Algorithm (RSA or ED25519) | `string` | `"RSA"` | no |
-| key_pair_rsa_bits | RSA key bits (2048, 3072, or 4096) | `number` | `4096` | no |
-| store_key_pair_in_ssm | Store keys in SSM Parameter Store | `bool` | `true` | no |
-| private_key_ssm_parameter_name | SSM parameter name for private key | `string` | `null` | no |
-| public_key_ssm_parameter_name | SSM parameter name for public key | `string` | `null` | no |
-
-### Spot Instance Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| use_spot_instance | Use spot instance instead of on-demand | `bool` | `false` | no |
-| spot_price | Maximum price to request on spot market | `string` | `null` | no |
-| spot_type | Spot request type (one-time or persistent) | `string` | `"persistent"` | no |
-| spot_instance_interruption_behavior | Behavior on interruption (hibernate, stop, terminate) | `string` | `"stop"` | no |
-| spot_wait_for_fulfillment | Wait for spot request fulfillment | `bool` | `true` | no |
-| spot_valid_until | End date/time of request (RFC3339) | `string` | `null` | no |
-| spot_block_duration_minutes | Duration in minutes (60-360) | `number` | `null` | no |
-
-### Network Interface Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| create_network_interfaces | Create new network interfaces | `bool` | `false` | no |
-| network_interface_configs | Map of network interface configurations | `map(object)` | `{}` | no |
-| additional_network_interfaces | Map of existing NICs to attach | `map(object)` | `{}` | no |
-
-### Instance State Management
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| manage_instance_state | Manage instance state with Terraform | `bool` | `false` | no |
-| instance_state | Desired state (running or stopped) | `string` | `"running"` | no |
-| force_instance_state_change | Force state change | `bool` | `false` | no |
+Notes (validations):
+- `instance_initiated_shutdown_behavior` must be either `"stop"` or `"terminate"`.
+- `tenancy` must be one of: `"default"`, `"dedicated"`, `"host"`.
+- `cpu_credits` (if provided) must be `"standard"` or `"unlimited"`.
 
 ### Storage Configuration
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| root_block_device | Root block device configuration | `map(any)` | `null` | no |
-| ebs_block_devices | Additional EBS block devices | `list(map(string))` | `[]` | no |
-| ephemeral_block_devices | Ephemeral volumes | `list(map(string))` | `[]` | no |
-| additional_ebs_volumes | Separately created EBS volumes | `map(object)` | `{}` | no |
+| root_block_device | Customize details about the root block device of the instance | `object({ optional(string) volume_type, optional(number) volume_size, optional(number) iops, optional(number) throughput, optional(bool) delete_on_termination, optional(bool) encrypted, optional(string) kms_key_id, optional(map(string)) tags })` | `null` | no |
+| ebs_block_devices | Additional EBS block devices to attach to the instance | `list(object({ device_name = string, optional(string) volume_type, optional(number) volume_size, optional(number) iops, optional(number) throughput, optional(bool) delete_on_termination, optional(bool) encrypted, optional(string) kms_key_id, optional(string) snapshot_id, optional(map(string)) tags }))` | `[]` | no |
+| ephemeral_block_devices | Customize Ephemeral (also known as Instance Store) volumes on the instance | `list(object({ device_name = string, virtual_name = string }))` | `[]` | no |
+| additional_ebs_volumes | Map of additional EBS volumes to create and attach to the instance | `map(object({ device_name = string, size = number, optional(string) type, optional(number) iops, optional(number) throughput, optional(bool) encrypted, optional(string) kms_key_id, optional(string) snapshot_id, optional(bool) force_detach, optional(bool) skip_destroy, optional(map(string)) tags }))` | `{}` | no |
 | ebs_optimized | Enable EBS optimization | `bool` | `true` | no |
 
-### Other Configuration
+Notes (validations):
+- `root_block_device.volume_size` (if provided) must be > 0.
+- `root_block_device.volume_type` and `ebs_block_devices[*].volume_type` (if provided) must be one of: `gp2`, `gp3`, `io1`, `io2`, `sc1`, `st1`, `standard`.
+- Each entry in `ebs_block_devices` must have a non-empty `device_name`.
+
+### Network Interface Configuration
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| enable_monitoring | Enable detailed monitoring | `bool` | `false` | no |
-| create_eip | Create and associate Elastic IP | `bool` | `false` | no |
-| metadata_options | Instance metadata options | `map(string)` | See below | no |
-| disable_api_termination | Enable termination protection | `bool` | `false` | no |
-| source_dest_check | Enable source/destination checking | `bool` | `true` | no |
-| tenancy | Instance tenancy | `string` | `"default"` | no |
-| placement_group | Placement group name | `string` | `null` | no |
-| cpu_credits | CPU credits (unlimited or standard) | `string` | `null` | no |
-| tags | Tags to assign to resources | `map(string)` | `{}` | no |
-| volume_tags | Tags for volumes | `map(string)` | `{}` | no |
+| create_network_interfaces | Whether to create new network interfaces | `bool` | `false` | no |
+| network_interface_configs | Map of network interface configurations to create | `map(object({ subnet_id = string, device_index = number, optional(list(string)) security_group_ids, optional(list(string)) private_ips, optional(string) private_ip, optional(bool) source_dest_check, optional(string) description, optional(map(string)) tags }))` | `{}` | no |
+| additional_network_interfaces | Map of additional existing network interfaces to attach to the instance | `map(object({ network_interface_id = string, device_index = number }))` | `{}` | no |
+| network_interfaces | Customize network interfaces to be attached at instance boot time | `list(object({ device_index = number, network_interface_id = string, optional(bool) delete_on_termination }))` | `[]` | no |
+
+### IAM Role Configuration
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| create_iam_role | Whether to create a new IAM role for the instance | `bool` | `false` | no |
+| existing_iam_role_name | Name of an existing IAM role to use (if create_iam_role is false) | `string` | `null` | no |
+| iam_instance_profile | IAM Instance Profile to launch the instance with (used if create_iam_role is false and existing_iam_role_name is null) | `string` | `null` | no |
+| attach_ssm_policy | Whether to attach the AmazonSSMManagedInstanceCore policy to the IAM role | `bool` | `true` | no |
+| attach_cloudwatch_agent_policy | Whether to attach the CloudWatchAgentServerPolicy to the IAM role | `bool` | `true` | no |
+| additional_iam_policy_arns | List of additional IAM policy ARNs to attach to the role | `list(string)` | `[]` | no |
+
+Behavior notes:
+- If `create_iam_role = true` the module creates a role and an instance profile unless overridden.
+- If `create_iam_role = false` and `existing_iam_role_name` is supplied, the module will use the existing role.
+
+### Key Pair Configuration
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| create_key_pair | Whether to create a new key pair for the instance | `bool` | `false` | no |
+| key_pair_name | Name for the key pair (if not specified, uses instance name with '-key' suffix) | `string` | `null` | no |
+| key_pair_algorithm | Algorithm to use for key pair generation (`RSA` or `ED25519`) | `string` | `"RSA"` | no |
+| key_pair_rsa_bits | Number of bits for RSA key (if algorithm is RSA) | `number` | `4096` | no |
+| store_key_pair_in_ssm | Whether to store the private and public keys in SSM Parameter Store | `bool` | `true` | no |
+| private_key_ssm_parameter_name | SSM parameter name for storing the private key | `string` | `null` | no |
+| public_key_ssm_parameter_name | SSM parameter name for storing the public key | `string` | `null` | no |
+
+Validations:
+- `key_pair_algorithm` must be `RSA` or `ED25519`.
+- If `key_pair_algorithm = "RSA"`, `key_pair_rsa_bits` must be one of: `2048`, `3072`, `4096`.
+
+### Spot Instance Configuration
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| use_spot_instance | Whether to use spot instance instead of on-demand | `bool` | `false` | no |
+| spot_price | The maximum price to request on the spot market. Defaults to on-demand price if not specified | `string` | `null` | no |
+| spot_wait_for_fulfillment | If set, Terraform will wait for the Spot Request to be fulfilled | `bool` | `true` | no |
+| spot_type | The Spot Instance request type (`one-time` or `persistent`) | `string` | `"persistent"` | no |
+| spot_instance_interruption_behavior | Indicates whether a Spot Instance stops or terminates when it is interrupted (`hibernate`, `stop`, or `terminate`) | `string` | `"stop"` | no |
+| spot_valid_until | The end date and time of the request in RFC3339 format (`YYYY-MM-DDTHH:MM:SSZ`) | `string` | `null` | no |
+
+Validations:
+- `spot_type` must be `one-time` or `persistent`.
+- `spot_instance_interruption_behavior` must be `hibernate`, `stop`, or `terminate`.
+- `spot_valid_until` (if set) must match RFC3339 UTC format (YYYY-MM-DDTHH:MM:SSZ).
+
+> Note: `spot_block_duration_minutes` has been removed / deprecated and is not supported by this module.
+
+### Instance State Management
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| manage_instance_state | Whether to manage the instance state with aws_ec2_instance_state resource | `bool` | `false` | no |
+| instance_state | The desired state of the instance (running or stopped) | `string` | `"running"` | no |
+| force_instance_state_change | Whether to force the instance state change | `bool` | `false` | no |
+
+Validation:
+- `instance_state` must be either `running` or `stopped`.
 
 ### Default Metadata Options
 
@@ -490,6 +519,12 @@ module "ec2_spot_dev" {
   instance_metadata_tags      = "disabled"
 }
 ```
+
+Validation summary for `metadata_options`:
+- `http_endpoint`: must be `enabled` or `disabled`.
+- `http_tokens`: must be `required` or `optional`.
+- `http_put_response_hop_limit`: integer between 0 and 64.
+- `instance_metadata_tags`: must be `enabled` or `disabled`.
 
 ## Outputs
 
@@ -579,34 +614,33 @@ module "ec2_spot_dev" {
 ### Security Best Practices
 
 - **IMDSv2 Required**: The module enforces IMDSv2 by default for enhanced security
-- **Encryption**: EBS volumes are encrypted by default
-- **Key Storage**: Private keys are stored as SecureString in SSM with AWS managed KMS
+- **Encryption**: Use encrypted EBS volumes where required by your security policy
+- **Key Storage**: Private keys stored by this module (when generated) are stored as SSM `SecureString` using the AWS-managed KMS key by default
 - **IAM Policies**: SSM and CloudWatch policies are attached by default for management
 
 ### Cost Optimization
 
-- Use `use_spot_instance = true` for non-critical workloads (up to 90% savings)
-- Use `gp3` volumes instead of `gp2` for better price/performance
-- Enable `manage_instance_state` to stop instances when not needed
+- Use `use_spot_instance = true` for non-critical workloads (can yield significant savings)
+- Prefer `gp3` volumes over `gp2` for cost/performance where appropriate
+- Enable `manage_instance_state` to stop instances when not in use
 
 ### Networking
 
 - When `create_network_interfaces = true`, new NICs are created and attached
 - When `create_network_interfaces = false`, use `additional_network_interfaces` to attach existing NICs
-- The primary network interface is always created with the instance
+- Ensure subnet and IP selections for additional NICs do not conflict with existing allocations
 
 ### Key Pair Management
 
-- Generated private keys are automatically stored in SSM Parameter Store
-- Use the `private_key_pem` output (sensitive) to retrieve the key
+- Generated private keys are automatically stored in SSM Parameter Store (when `store_key_pair_in_ssm = true`)
+- Use the `private_key_pem` output (sensitive) or the SSM parameter to retrieve the key
 - Retrieve keys from SSM using: `aws ssm get-parameter --name <parameter_name> --with-decryption`
 
 ### Spot Instances
 
-- Spot instances can be interrupted by AWS with 2-minute warning
-- Use `spot_instance_interruption_behavior = "stop"` to preserve data
-- Set `spot_type = "persistent"` to automatically request a new spot instance after interruption
-- Monitor spot instance status with the `spot_request_state` output
+- Spot instances can be interrupted by AWS with a short warning
+- Use `spot_instance_interruption_behavior = "stop"` to preserve attached EBS data where possible
+- Monitor Spot lifecycle and `spot_request_state` output
 
 ### Instance State Management
 
@@ -661,7 +695,7 @@ resource "local_file" "private_key" {
 
 ## Authors
 
-Module managed by Flentas Technologies.
+Module managed by vinay datta.
 
 ## License
 

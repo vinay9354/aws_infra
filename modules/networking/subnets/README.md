@@ -212,7 +212,7 @@ module "tgw_subnet" {
 
 | Name | Version |
 |------|---------|
-| terraform | ~> 1.12.1 |
+| terraform | ~> 1.14.1 |
 | aws | ~> 6.22.1 |
 
 ## Inputs

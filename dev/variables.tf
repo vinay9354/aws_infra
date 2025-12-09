@@ -19,6 +19,8 @@ variable "environment" {
   default     = "dev"
 }
 
+
+
 # ----------------
 # Subnet Variables
 # ----------------
@@ -59,4 +61,3 @@ variable "private_subnets" {
   }))
   default = {}
 }
-

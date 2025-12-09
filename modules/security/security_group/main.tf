@@ -11,8 +11,6 @@ resource "aws_security_group" "this" {
   )
 }
 
-# Validation for rule combinations is handled in `variables.tf` via `validation` blocks.
-# Removed the local plan-time validation here to avoid unused-declaration warnings from linters.
 
 # Ingress rules
 resource "aws_security_group_rule" "ingress" {

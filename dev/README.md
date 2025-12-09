@@ -25,7 +25,7 @@ VPC (172.20.0.0/16)
 
 Before you begin, ensure you have:
 
-1. **Terraform** installed (version ~> 1.12.1)
+1. **Terraform** installed (version ~> 1.14.1)
    ```bash
    terraform --version
    ```
@@ -291,5 +291,5 @@ For questions or issues, contact the infrastructure team or create an issue in t
 
 **Last Updated:** 30th November 2025  
 **Maintained By:** Vinay Datta  
-**Terraform Version:** ~> 1.12.1  
+**Terraform Version:** ~> 1.14.1  
 **AWS Provider Version:** ~> 6.22.1

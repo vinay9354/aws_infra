@@ -135,38 +135,107 @@ variable "availability_zone" {
   default     = null
 }
 
+# Root block device - tightened type and validation
 variable "root_block_device" {
   description = "Customize details about the root block device of the instance"
-  type        = map(any)
-  default     = null
+  # Accept a structured object (nullable)
+  type = object({
+    volume_type           = optional(string)
+    volume_size           = optional(number)
+    iops                  = optional(number)
+    throughput            = optional(number)
+    delete_on_termination = optional(bool)
+    encrypted             = optional(bool)
+    kms_key_id            = optional(string)
+  })
+  default = null
+
+  validation {
+    condition = (
+      var.root_block_device == null ||
+      (
+        (try(var.root_block_device.volume_size, null) == null || try(var.root_block_device.volume_size, 0) > 0) &&
+        (try(var.root_block_device.volume_type, null) == null || contains(["gp2", "gp3", "io1", "io2", "sc1", "st1", "standard"], try(var.root_block_device.volume_type, "")))
+      )
+    )
+    error_message = "If provided, root_block_device.volume_size must be > 0 and volume_type (if present) must be a valid EBS type (gp2,gp3,io1,io2,sc1,st1,standard)."
+  }
 }
 
+# Additional EBS block devices - tightened type and validation
 variable "ebs_block_devices" {
   description = "Additional EBS block devices to attach to the instance"
-  type        = list(map(string))
-  default     = []
+  type = list(object({
+    device_name           = string
+    volume_type           = optional(string)
+    volume_size           = optional(number)
+    iops                  = optional(number)
+    throughput            = optional(number)
+    delete_on_termination = optional(bool)
+    encrypted             = optional(bool)
+    kms_key_id            = optional(string)
+    snapshot_id           = optional(string)
+  }))
+  default = []
+
+  validation {
+    condition = length(var.ebs_block_devices) == 0 || alltrue([
+      for dev in var.ebs_block_devices : (
+        length(trimspace(dev.device_name)) > 0 &&
+        (try(dev.volume_size, null) == null || try(dev.volume_size, 0) > 0) &&
+        (try(dev.volume_type, null) == null || contains(["gp2", "gp3", "io1", "io2", "sc1", "st1", "standard"], try(dev.volume_type, "gp3")))
+      )
+    ])
+    error_message = "Each ebs_block_devices entry must have a non-empty device_name; if provided, volume_size must be > 0 and volume_type (if present) must be a valid EBS type."
+  }
 }
 
+# Ephemeral (instance store) block devices
 variable "ephemeral_block_devices" {
   description = "Customize Ephemeral (also known as Instance Store) volumes on the instance"
-  type        = list(map(string))
-  default     = []
+  type = list(object({
+    device_name  = string
+    virtual_name = string
+  }))
+  default = []
 }
 
+# Network interfaces passed inline to instance resources
 variable "network_interfaces" {
   description = "Customize network interfaces to be attached at instance boot time"
-  type        = list(map(string))
-  default     = []
+  type = list(object({
+    device_index          = number
+    network_interface_id  = string
+    delete_on_termination = optional(bool)
+  }))
+  default = []
 }
 
+# Metadata options - tightened and validated
 variable "metadata_options" {
   description = "Customize the metadata options of the instance"
-  type        = map(string)
+  type = object({
+    http_endpoint               = optional(string)
+    http_tokens                 = optional(string)
+    http_put_response_hop_limit = optional(number)
+    instance_metadata_tags      = optional(string)
+  })
   default = {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
     http_put_response_hop_limit = 1
     instance_metadata_tags      = "disabled"
+  }
+
+  validation {
+    condition = (
+      contains(["enabled", "disabled"], try(var.metadata_options.http_endpoint, "enabled")) &&
+      contains(["required", "optional"], try(var.metadata_options.http_tokens, "required")) &&
+      try(var.metadata_options.http_put_response_hop_limit, 1) >= 0 &&
+      try(var.metadata_options.http_put_response_hop_limit, 1) <= 64 &&
+      contains(["enabled", "disabled"], try(var.metadata_options.instance_metadata_tags, "disabled"))
+    )
+    error_message = "metadata_options must contain valid values: http_endpoint (enabled|disabled), http_tokens (required|optional), http_put_response_hop_limit (0-64), instance_metadata_tags (enabled|disabled)."
   }
 }
 
@@ -174,6 +243,10 @@ variable "cpu_credits" {
   description = "The credit option for CPU usage (unlimited or standard)"
   type        = string
   default     = null
+  validation {
+    condition     = var.cpu_credits == null || contains(["standard", "unlimited"], var.cpu_credits)
+    error_message = "cpu_credits must be either 'standard' or 'unlimited' if provided."
+  }
 }
 
 variable "tags" {
@@ -355,6 +428,10 @@ variable "spot_valid_until" {
   description = "The end date and time of the request in RFC3339 format (YYYY-MM-DDTHH:MM:SSZ)"
   type        = string
   default     = null
+  validation {
+    condition     = var.spot_valid_until == null || can(regex("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$", var.spot_valid_until))
+    error_message = "spot_valid_until must be in RFC3339 UTC format: YYYY-MM-DDTHH:MM:SSZ"
+  }
 }
 
 # ===================================

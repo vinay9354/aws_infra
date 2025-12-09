@@ -133,11 +133,11 @@ resource "aws_network_interface" "this" {
   for_each = var.create_instance && var.create_network_interfaces ? var.network_interface_configs : {}
 
   subnet_id         = each.value.subnet_id
-  security_groups   = lookup(each.value, "security_group_ids", [])
-  private_ips       = lookup(each.value, "private_ips", [])
-  private_ip        = lookup(each.value, "private_ip", null)
-  source_dest_check = lookup(each.value, "source_dest_check", true)
-  description       = lookup(each.value, "description", "Network interface for ${var.name}")
+  security_groups   = try(each.value.security_group_ids, [])
+  private_ips       = try(each.value.private_ips, [])
+  private_ip        = try(each.value.private_ip, null)
+  source_dest_check = try(each.value.source_dest_check, true)
+  description       = try(each.value.description, "Network interface for ${var.name}")
 
   attachment {
     instance     = aws_instance.this[0].id
@@ -146,7 +146,7 @@ resource "aws_network_interface" "this" {
 
   tags = merge(
     var.tags,
-    lookup(each.value, "tags", {}),
+    try(each.value.tags, {}),
     {
       Name = "${var.name}-eni-${each.key}"
     }
@@ -191,20 +191,13 @@ resource "aws_spot_instance_request" "this" {
   dynamic "root_block_device" {
     for_each = var.root_block_device != null ? [var.root_block_device] : []
     content {
-      volume_type           = lookup(root_block_device.value, "volume_type", "gp3")
-      volume_size           = lookup(root_block_device.value, "volume_size", 8)
-      iops                  = lookup(root_block_device.value, "iops", null)
-      throughput            = lookup(root_block_device.value, "throughput", null)
-      delete_on_termination = lookup(root_block_device.value, "delete_on_termination", true)
-      encrypted             = lookup(root_block_device.value, "encrypted", true)
-      kms_key_id            = lookup(root_block_device.value, "kms_key_id", null)
-      tags = merge(
-        var.tags,
-        lookup(root_block_device.value, "tags", {}),
-        {
-          Name = "${var.name}-root"
-        }
-      )
+      volume_type           = try(root_block_device.value.volume_type, "gp3")
+      volume_size           = try(root_block_device.value.volume_size, 8)
+      iops                  = try(root_block_device.value.iops, null)
+      throughput            = try(root_block_device.value.throughput, null)
+      delete_on_termination = try(root_block_device.value.delete_on_termination, true)
+      encrypted             = try(root_block_device.value.encrypted, true)
+      kms_key_id            = try(root_block_device.value.kms_key_id, null)
     }
   }
 
@@ -212,21 +205,15 @@ resource "aws_spot_instance_request" "this" {
     for_each = var.ebs_block_devices
     content {
       device_name           = ebs_block_device.value.device_name
-      volume_type           = lookup(ebs_block_device.value, "volume_type", "gp3")
-      volume_size           = lookup(ebs_block_device.value, "volume_size", 10)
-      iops                  = lookup(ebs_block_device.value, "iops", null)
-      throughput            = lookup(ebs_block_device.value, "throughput", null)
-      delete_on_termination = lookup(ebs_block_device.value, "delete_on_termination", true)
-      encrypted             = lookup(ebs_block_device.value, "encrypted", true)
-      kms_key_id            = lookup(ebs_block_device.value, "kms_key_id", null)
-      snapshot_id           = lookup(ebs_block_device.value, "snapshot_id", null)
-      tags = merge(
-        var.tags,
-        lookup(ebs_block_device.value, "tags", {}),
-        {
-          Name = "${var.name}-${ebs_block_device.value.device_name}"
-        }
-      )
+      volume_type           = try(ebs_block_device.value.volume_type, "gp3")
+      volume_size           = try(ebs_block_device.value.volume_size, 10)
+      iops                  = try(ebs_block_device.value.iops, null)
+      throughput            = try(ebs_block_device.value.throughput, null)
+      delete_on_termination = try(ebs_block_device.value.delete_on_termination, true)
+      encrypted             = try(ebs_block_device.value.encrypted, true)
+      kms_key_id            = try(ebs_block_device.value.kms_key_id, null)
+      snapshot_id           = try(ebs_block_device.value.snapshot_id, null)
+
     }
   }
 
@@ -243,17 +230,17 @@ resource "aws_spot_instance_request" "this" {
     content {
       device_index          = network_interface.value.device_index
       network_interface_id  = network_interface.value.network_interface_id
-      delete_on_termination = lookup(network_interface.value, "delete_on_termination", false)
+      delete_on_termination = try(network_interface.value.delete_on_termination, false)
     }
   }
 
   dynamic "metadata_options" {
     for_each = length(var.metadata_options) > 0 ? [var.metadata_options] : []
     content {
-      http_endpoint               = lookup(metadata_options.value, "http_endpoint", "enabled")
-      http_tokens                 = lookup(metadata_options.value, "http_tokens", "required")
-      http_put_response_hop_limit = lookup(metadata_options.value, "http_put_response_hop_limit", 1)
-      instance_metadata_tags      = lookup(metadata_options.value, "instance_metadata_tags", "disabled")
+      http_endpoint               = try(metadata_options.value.http_endpoint, "enabled")
+      http_tokens                 = try(metadata_options.value.http_tokens, "required")
+      http_put_response_hop_limit = try(metadata_options.value.http_put_response_hop_limit, 1)
+      instance_metadata_tags      = try(metadata_options.value.instance_metadata_tags, "disabled")
     }
   }
 
@@ -318,20 +305,13 @@ resource "aws_instance" "this" {
   dynamic "root_block_device" {
     for_each = var.root_block_device != null ? [var.root_block_device] : []
     content {
-      volume_type           = lookup(root_block_device.value, "volume_type", "gp3")
-      volume_size           = lookup(root_block_device.value, "volume_size", 8)
-      iops                  = lookup(root_block_device.value, "iops", null)
-      throughput            = lookup(root_block_device.value, "throughput", null)
-      delete_on_termination = lookup(root_block_device.value, "delete_on_termination", true)
-      encrypted             = lookup(root_block_device.value, "encrypted", true)
-      kms_key_id            = lookup(root_block_device.value, "kms_key_id", null)
-      tags = merge(
-        var.tags,
-        lookup(root_block_device.value, "tags", {}),
-        {
-          Name = "${var.name}-root"
-        }
-      )
+      volume_type           = try(root_block_device.value.volume_type, "gp3")
+      volume_size           = try(root_block_device.value.volume_size, 8)
+      iops                  = try(root_block_device.value.iops, null)
+      throughput            = try(root_block_device.value.throughput, null)
+      delete_on_termination = try(root_block_device.value.delete_on_termination, true)
+      encrypted             = try(root_block_device.value.encrypted, true)
+      kms_key_id            = try(root_block_device.value.kms_key_id, null)
     }
   }
 
@@ -339,21 +319,14 @@ resource "aws_instance" "this" {
     for_each = var.ebs_block_devices
     content {
       device_name           = ebs_block_device.value.device_name
-      volume_type           = lookup(ebs_block_device.value, "volume_type", "gp3")
-      volume_size           = lookup(ebs_block_device.value, "volume_size", 10)
-      iops                  = lookup(ebs_block_device.value, "iops", null)
-      throughput            = lookup(ebs_block_device.value, "throughput", null)
-      delete_on_termination = lookup(ebs_block_device.value, "delete_on_termination", true)
-      encrypted             = lookup(ebs_block_device.value, "encrypted", true)
-      kms_key_id            = lookup(ebs_block_device.value, "kms_key_id", null)
-      snapshot_id           = lookup(ebs_block_device.value, "snapshot_id", null)
-      tags = merge(
-        var.tags,
-        lookup(ebs_block_device.value, "tags", {}),
-        {
-          Name = "${var.name}-${ebs_block_device.value.device_name}"
-        }
-      )
+      volume_type           = try(ebs_block_device.value.volume_type, "gp3")
+      volume_size           = try(ebs_block_device.value.volume_size, 10)
+      iops                  = try(ebs_block_device.value.iops, null)
+      throughput            = try(ebs_block_device.value.throughput, null)
+      delete_on_termination = try(ebs_block_device.value.delete_on_termination, true)
+      encrypted             = try(ebs_block_device.value.encrypted, true)
+      kms_key_id            = try(ebs_block_device.value.kms_key_id, null)
+      snapshot_id           = try(ebs_block_device.value.snapshot_id, null)
     }
   }
 
@@ -370,17 +343,17 @@ resource "aws_instance" "this" {
     content {
       device_index          = network_interface.value.device_index
       network_interface_id  = network_interface.value.network_interface_id
-      delete_on_termination = lookup(network_interface.value, "delete_on_termination", false)
+      delete_on_termination = try(network_interface.value.delete_on_termination, false)
     }
   }
 
   dynamic "metadata_options" {
     for_each = length(var.metadata_options) > 0 ? [var.metadata_options] : []
     content {
-      http_endpoint               = lookup(metadata_options.value, "http_endpoint", "enabled")
-      http_tokens                 = lookup(metadata_options.value, "http_tokens", "required")
-      http_put_response_hop_limit = lookup(metadata_options.value, "http_put_response_hop_limit", 1)
-      instance_metadata_tags      = lookup(metadata_options.value, "instance_metadata_tags", "disabled")
+      http_endpoint               = try(metadata_options.value.http_endpoint, "enabled")
+      http_tokens                 = try(metadata_options.value.http_tokens, "required")
+      http_put_response_hop_limit = try(metadata_options.value.http_put_response_hop_limit, 1)
+      instance_metadata_tags      = try(metadata_options.value.instance_metadata_tags, "disabled")
     }
   }
 
@@ -400,7 +373,8 @@ resource "aws_instance" "this" {
 
   volume_tags = merge(
     var.tags,
-    var.volume_tags,
+    var.volume_tags
+    ,
     {
       Name = "${var.name}-volume"
     }
@@ -453,16 +427,16 @@ resource "aws_ebs_volume" "this" {
 
   availability_zone = var.use_spot_instance ? aws_spot_instance_request.this[0].availability_zone : aws_instance.this[0].availability_zone
   size              = each.value.size
-  type              = lookup(each.value, "type", "gp3")
-  iops              = lookup(each.value, "iops", null)
-  throughput        = lookup(each.value, "throughput", null)
-  encrypted         = lookup(each.value, "encrypted", true)
-  kms_key_id        = lookup(each.value, "kms_key_id", null)
-  snapshot_id       = lookup(each.value, "snapshot_id", null)
+  type              = try(each.value.type, "gp3")
+  iops              = try(each.value.iops, null)
+  throughput        = try(each.value.throughput, null)
+  encrypted         = try(each.value.encrypted, true)
+  kms_key_id        = try(each.value.kms_key_id, null)
+  snapshot_id       = try(each.value.snapshot_id, null)
 
   tags = merge(
     var.tags,
-    lookup(each.value, "tags", {}),
+    try(each.value.tags, {}),
     {
       Name = "${var.name}-${each.key}"
     }
@@ -476,8 +450,8 @@ resource "aws_volume_attachment" "this" {
   volume_id   = aws_ebs_volume.this[each.key].id
   instance_id = var.use_spot_instance ? aws_spot_instance_request.this[0].spot_instance_id : aws_instance.this[0].id
 
-  force_detach = lookup(each.value, "force_detach", false)
-  skip_destroy = lookup(each.value, "skip_destroy", false)
+  force_detach = try(each.value.force_detach, false)
+  skip_destroy = try(each.value.skip_destroy, false)
 }
 
 # Attach existing network interfaces

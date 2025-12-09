@@ -99,4 +99,100 @@ module "security_group" {
   egress_rules  = lookup(each.value, "egress_rules", [])
 }
 
+# --------------------------------
+# Create EC2 instances using module
+# --------------------------------
+# This module block will create one module instance per key in local.ec2_instances.
+# It maps the fields from each.value into the module input variables expected by the EC2 module.
+module "ec2_instances" {
+  source   = "../modules/compute/ec2"
+  for_each = local.ec2_instances
 
+  # Core settings
+  create_instance                      = lookup(each.value, "create_instance", true)
+  name                                 = lookup(each.value, "name", each.key)
+  ami_id                               = lookup(each.value, "ami_id", null)
+  instance_type                        = lookup(each.value, "instance_type", "t3.micro")
+  key_name                             = lookup(each.value, "key_name", null)
+  subnet_id                            = lookup(each.value, "subnet_id", null)
+  security_group_ids                   = lookup(each.value, "security_group_ids", [])
+  iam_instance_profile                 = lookup(each.value, "iam_instance_profile", null)
+  associate_public_ip_address          = lookup(each.value, "associate_public_ip_address", false)
+  user_data                            = lookup(each.value, "user_data", null)
+  user_data_base64                     = lookup(each.value, "user_data_base64", null)
+  enable_monitoring                    = lookup(each.value, "enable_monitoring", false)
+  ebs_optimized                        = lookup(each.value, "ebs_optimized", false)
+  source_dest_check                    = lookup(each.value, "source_dest_check", true)
+  disable_api_termination              = lookup(each.value, "disable_api_termination", false)
+  instance_initiated_shutdown_behavior = lookup(each.value, "instance_initiated_shutdown_behavior", "stop")
+  placement_group                      = lookup(each.value, "placement_group", null)
+  tenancy                              = lookup(each.value, "tenancy", "default")
+  host_id                              = lookup(each.value, "host_id", null)
+
+  # CPU options
+  cpu_core_count       = lookup(each.value, "cpu_core_count", null)
+  cpu_threads_per_core = lookup(each.value, "cpu_threads_per_core", null)
+  availability_zone    = lookup(each.value, "availability_zone", null)
+
+  # Block device and EBS settings
+  root_block_device       = lookup(each.value, "root_block_device", null)
+  ebs_block_devices       = lookup(each.value, "ebs_block_devices", [])
+  ephemeral_block_devices = lookup(each.value, "ephemeral_block_devices", [])
+  additional_ebs_volumes  = lookup(each.value, "additional_ebs_volumes", {})
+
+  # Network interfaces
+  network_interfaces            = lookup(each.value, "network_interfaces", [])
+  create_network_interfaces     = lookup(each.value, "create_network_interfaces", false)
+  network_interface_configs     = lookup(each.value, "network_interface_configs", {})
+  additional_network_interfaces = lookup(each.value, "additional_network_interfaces", {})
+
+  # Metadata / IMDS
+  metadata_options = lookup(each.value, "metadata_options", {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "enabled"
+  })
+
+  # CPU credits / misc
+  cpu_credits = lookup(each.value, "cpu_credits", null)
+
+  # Tagging
+  tags        = lookup(each.value, "tags", {})
+  volume_tags = lookup(each.value, "volume_tags", {})
+
+  # Elastic IP
+  create_eip = lookup(each.value, "create_eip", false)
+
+  # IAM role options
+  create_iam_role                = lookup(each.value, "create_iam_role", false)
+  existing_iam_role_name         = lookup(each.value, "existing_iam_role_name", null)
+  attach_ssm_policy              = lookup(each.value, "attach_ssm_policy", true)
+  attach_cloudwatch_agent_policy = lookup(each.value, "attach_cloudwatch_agent_policy", true)
+  additional_iam_policy_arns     = lookup(each.value, "additional_iam_policy_arns", [])
+
+  # Key pair options
+  create_key_pair                = lookup(each.value, "create_key_pair", false)
+  key_pair_name                  = lookup(each.value, "key_pair_name", null)
+  key_pair_algorithm             = lookup(each.value, "key_pair_algorithm", "RSA")
+  key_pair_rsa_bits              = lookup(each.value, "key_pair_rsa_bits", 4096)
+  store_key_pair_in_ssm          = lookup(each.value, "store_key_pair_in_ssm", true)
+  private_key_ssm_parameter_name = lookup(each.value, "private_key_ssm_parameter_name", null)
+  public_key_ssm_parameter_name  = lookup(each.value, "public_key_ssm_parameter_name", null)
+
+  # Spot instance options
+  use_spot_instance                   = lookup(each.value, "use_spot_instance", false)
+  spot_price                          = lookup(each.value, "spot_price", null)
+  spot_wait_for_fulfillment           = lookup(each.value, "spot_wait_for_fulfillment", true)
+  spot_type                           = lookup(each.value, "spot_type", "persistent")
+  spot_instance_interruption_behavior = lookup(each.value, "spot_instance_interruption_behavior", "stop")
+  spot_valid_until                    = lookup(each.value, "spot_valid_until", null)
+
+  # Instance state management
+  manage_instance_state       = lookup(each.value, "manage_instance_state", false)
+  instance_state              = lookup(each.value, "instance_state", "running")
+  force_instance_state_change = lookup(each.value, "force_instance_state_change", false)
+
+  # Safety / defaults - if you need to forward additional module vars later,
+  # add them both to the locals map and forward them here using lookup(each.value, "<key>", <default>).
+}
