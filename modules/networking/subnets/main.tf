@@ -43,9 +43,11 @@ resource "aws_route_table_association" "this" {
   route_table_id = var.create_route_table ? aws_route_table.this[0].id : var.existing_route_table_id
 }
 
-# Main/default route (optional - only created if route_target_id is provided)
+# Main/default route (optional - only created if a destination is provided and a route table should be created)
+# NOTE: avoid using resource-derived attributes in the `count` expression. The decision to create the route
+# must not depend on values that are only available at apply-time.
 resource "aws_route" "main_ipv4" {
-  count = var.create_route_table && var.route_target_id != null && var.route_target_id != "" && var.route_cidr_block != null ? 1 : 0
+  count = var.create_route_table && var.route_cidr_block != null ? 1 : 0
 
   route_table_id         = aws_route_table.this[0].id
   destination_cidr_block = var.route_cidr_block
@@ -60,7 +62,7 @@ resource "aws_route" "main_ipv4" {
 
 # Main IPv6 route (optional)
 resource "aws_route" "main_ipv6" {
-  count = var.create_route_table && var.route_target_id != null && var.route_target_id != "" && var.route_ipv6_cidr_block != null ? 1 : 0
+  count = var.create_route_table && var.route_ipv6_cidr_block != null ? 1 : 0
 
   route_table_id              = aws_route_table.this[0].id
   destination_ipv6_cidr_block = var.route_ipv6_cidr_block

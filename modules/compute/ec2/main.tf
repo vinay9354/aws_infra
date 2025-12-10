@@ -271,6 +271,7 @@ resource "aws_spot_instance_request" "this" {
       ami,
       user_data,
       user_data_base64,
+      associate_public_ip_address
     ]
   }
 }
@@ -385,6 +386,7 @@ resource "aws_instance" "this" {
       ami,
       user_data,
       user_data_base64,
+      associate_public_ip_address
     ]
   }
 }
