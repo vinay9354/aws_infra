@@ -24,7 +24,7 @@ env:
   TF_VERSION: 1.14.1
   TARGET_ENV: dev
   # Note: CODEBUILD_PROJECT_NAME is defined here for reference but hardcoded in runs-on due to GitHub Actions limitations.
-  CODEBUILD_PROJECT_NAME: vinay-github-aws-infra-runner
+  CODEBUILD_PROJECT_NAME: codebuild-vinay-github-aws-infra-runner
 
 jobs:
   plan:
@@ -32,7 +32,7 @@ jobs:
     # Run on push OR if manually triggered without the apply flag (just to see plan)
     if: ${{ github.event.inputs.apply_terraform != 'true' }}
     # The label must match the one configured in your CodeBuild project webhook
-    runs-on: vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
     defaults:
       run:
         working-directory: dev
@@ -66,7 +66,7 @@ jobs:
     name: Terraform Apply
     if: ${{ github.event.inputs.apply_terraform == 'true' }}
     # The label must match the one configured in your CodeBuild project webhook
-    runs-on: vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: codebuild-vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
     defaults:
       run:
         working-directory: dev
