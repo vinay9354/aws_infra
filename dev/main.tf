@@ -95,7 +95,7 @@ module "security_group" {
 
   tags = lookup(each.value, "tags", {})
 
-  ingress_rules = each.value.ingress_rules
+  ingress_rules = lookup(each.value, "ingress_rules", [])
   egress_rules  = lookup(each.value, "egress_rules", [])
 }
 
@@ -195,4 +195,35 @@ module "ec2_instances" {
 
   # Safety / defaults - if you need to forward additional module vars later,
   # add them both to the locals map and forward them here using lookup(each.value, "<key>", <default>).
+}
+
+# -----------------------------
+# IAM Policy Module
+# -----------------------------
+module "iam_policies" {
+  source   = "../modules/security/iam_policy"
+  for_each = local.iam_policies
+
+  name        = each.key
+  description = lookup(each.value, "description", null)
+  path        = lookup(each.value, "path", "/")
+  policy      = each.value.policy
+  tags        = lookup(each.value, "tags", {})
+}
+
+# -----------------------------
+# IAM Role Module
+# -----------------------------
+module "iam_roles" {
+  source   = "../modules/security/iam_role"
+  for_each = local.iam_roles
+
+  name                    = each.key
+  description             = lookup(each.value, "description", "Managed by Terraform")
+  assume_role_policy      = each.value.assume_role_policy
+  policy_arns             = lookup(each.value, "policy_arns", [])
+  create_instance_profile = lookup(each.value, "create_instance_profile", false)
+  path                    = lookup(each.value, "path", "/")
+  max_session_duration    = lookup(each.value, "max_session_duration", 3600)
+  tags                    = lookup(each.value, "tags", {})
 }

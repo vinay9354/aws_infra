@@ -45,6 +45,27 @@ locals {
         }
       ]
     }
+
+    vinay-aws-infra-codebuild-sg = {
+      description = "Security group for CodeBuild projects"
+      tags = {
+        Usecase = "CodeBuildSG"
+      }
+
+      egress_rules = [
+        {
+          description              = "Allow all outbound"
+          from_port                = 0
+          to_port                  = 0
+          protocol                 = "-1"
+          cidr_blocks              = ["0.0.0.0/0"]
+          ipv6_cidr_blocks         = ["::/0"]
+          prefix_list_ids          = []
+          source_security_group_id = null
+          self                     = false
+        }
+      ]
+    }
   }
 }
 
@@ -78,10 +99,97 @@ locals {
         delete_on_termination = true
       }
       tags = {
-        Usecase = "nat"
+        Usecase  = "nat"
+        Autostop = "true"
       }
     }
 
   }
 }
 
+# -------------------------
+# IAM Policy locals
+# -------------------------
+locals {
+  iam_policies = {
+    ec2-start-stop-policy = {
+      description = "Allow start and stop of EC2 instances"
+      policy = jsonencode({
+        "Version" : "2012-10-17",
+        "Statement" : [
+          {
+            "Sid" : "ec2access",
+            "Effect" : "Allow",
+            "Action" : [
+              "ec2:StartInstances",
+              "ec2:StopInstances",
+              "ec2:DescribeInstanceStatus"
+            ],
+            "Resource" : "*"
+          }
+        ]
+      })
+      tags = {
+        Purpose = "ec2-start-stop-policy"
+      }
+    }
+  }
+}
+
+# -------------------------
+# IAM Role locals
+# -------------------------
+locals {
+  iam_roles = {
+    "ec2-ssm-scheduler-role" = {
+      description = "Role for EC2 scheduler to start/stop instances"
+      assume_role_policy = jsonencode({
+        "Version" : "2012-10-17",
+        "Statement" : [
+          {
+            "Sid" : "",
+            "Effect" : "Allow",
+            "Principal" : {
+              "Service" : [
+                "ssm.amazonaws.com"
+              ]
+            },
+            "Action" : "sts:AssumeRole"
+          }
+        ]
+      })
+      policy_arns = [
+        module.iam_policies["ec2-start-stop-policy"].arn
+      ]
+      create_instance_profile = false
+      tags = {
+        Purpose = "Scheduler"
+      }
+    }
+    vinay-infra-codebuild-role = {
+      description = "Role for CodeBuild to access VPC resources"
+      assume_role_policy = jsonencode({
+        "Version" : "2012-10-17",
+        "Statement" : [
+          {
+            "Sid" : "",
+            "Effect" : "Allow",
+            "Principal" : {
+              "Service" : [
+                "codebuild.amazonaws.com"
+              ]
+            },
+            "Action" : "sts:AssumeRole"
+          }
+        ]
+      })
+      policy_arns = [
+        "arn:aws:iam::aws:policy/AdministratorAccess"
+      ]
+      create_instance_profile = false
+      tags = {
+        Purpose = "CodeBuild"
+      }
+    }
+  }
+}

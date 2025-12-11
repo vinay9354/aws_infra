@@ -1,0 +1,87 @@
+name: Terraform Dev Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'dev/**'
+      - 'modules/**'
+  workflow_dispatch:
+    inputs:
+      apply_terraform:
+        description: 'Check to run Terraform Apply'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_VAR_aws_region: ap-south-1
+  TF_VERSION: 1.14.1
+  TARGET_ENV: dev
+  # Note: CODEBUILD_PROJECT_NAME is defined here for reference but hardcoded in runs-on due to GitHub Actions limitations.
+  CODEBUILD_PROJECT_NAME: vinay-github-aws-infra-runner
+
+jobs:
+  plan:
+    name: Terraform Plan
+    # Run on push OR if manually triggered without the apply flag (just to see plan)
+    if: ${{ github.event.inputs.apply_terraform != 'true' }}
+    # The label must match the one configured in your CodeBuild project webhook
+    runs-on: vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    defaults:
+      run:
+        working-directory: dev
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false # Disable wrapper to correctly capture output if needed, though often helpful
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -out=tfplan
+      
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: dev/tfplan
+
+  apply:
+    name: Terraform Apply
+    if: ${{ github.event.inputs.apply_terraform == 'true' }}
+    # The label must match the one configured in your CodeBuild project webhook
+    runs-on: vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    defaults:
+      run:
+        working-directory: dev
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
