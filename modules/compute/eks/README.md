@@ -160,7 +160,7 @@ kubectl get pods --all-namespaces
 ├─────────┼─────────────────────────────────────────────────┤ │
 │         │         Data Plane (Your VPC)                     │
 │         │                                                   │
-│  ┌──────▼────────────────────────────────────────────┐     │
+│  ┌──────▼────────────────────────────────────────────┐      │
 │  │  Node Security Group (Shared)                     │      │
 │  │                                                   │      │
 │  │  ┌──────────────┐  ┌──────────────┐               │      │
@@ -168,10 +168,10 @@ kubectl get pods --all-namespaces
 │  │  │  Node Group  │  │  Node Group  │               │      │
 │  │  │  (On-Demand) │  │  (Spot)      │               │      │
 │  │  ├──────────────┤  ├──────────────┤               │      │
-│  │  │ • EC2 Inst. │  │ • EC2 Inst.  │                │      │
-│  │  │ • Kubelet   │  │ • Kubelet    │                │      │
-│  │  │ • IAM Role  │  │ • IAM Role   │                │      │
-│  │  │ • IMDSv2    │  │ • IMDSv2     │                │      │
+│  │  │ • EC2 Inst.  │  │ • EC2 Inst.  │               │      │
+│  │  │ • Kubelet    │  │ • Kubelet    │               │      │
+│  │  │ • IAM Role   │  │ • IAM Role   │               │      │
+│  │  │ • IMDSv2     │  │ • IMDSv2     │               │      │
 │  │  └──────────────┘  └──────────────┘               │      │
 │  │                                                   │      │
 │  │  ┌──────────────┐  ┌──────────────┐               │      │

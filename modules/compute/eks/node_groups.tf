@@ -12,7 +12,7 @@ resource "aws_launch_template" "this" {
 
   # This prevents passing 'null' which causes API errors, and ensures a valid AMI is always present in the LT.
 
-  image_id               = each.value.ami_id != null ? each.value.ami_id : local.default_al2_ami_id
+  image_id               = each.value.ami_id != null ? each.value.ami_id : local.default_linux_ami_id
   update_default_version = true
 
   block_device_mappings {

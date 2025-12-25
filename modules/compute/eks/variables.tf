@@ -299,7 +299,7 @@ variable "managed_node_groups" {
     max_size     = optional(number, 3)
     desired_size = optional(number, 1)
 
-    ami_type       = optional(string, "AL2_x86_64")
+    ami_type       = optional(string, "AL2023_x86_64_STANDARD")
     ami_id         = optional(string)              # For Custom AMI
     capacity_type  = optional(string, "ON_DEMAND") # ON_DEMAND or SPOT
     instance_types = optional(list(string), ["t3.medium"])

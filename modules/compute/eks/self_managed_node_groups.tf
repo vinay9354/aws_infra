@@ -74,8 +74,8 @@ resource "aws_launch_template" "self_managed" {
 
   name_prefix = "${var.cluster_name}-${each.key}-self-"
 
-  # Logic: Use provided AMI ID -> Fallback to Windows Optimized -> Fallback to AL2 Optimized
-  image_id = each.value.ami_id != null ? each.value.ami_id : (each.value.platform == "windows" ? local.default_windows_ami_id : local.default_al2_ami_id)
+  # Logic: Use provided AMI ID -> Fallback to Windows Optimized -> Fallback to AL2023 Optimized
+  image_id = each.value.ami_id != null ? each.value.ami_id : (each.value.platform == "windows" ? local.default_windows_ami_id : local.default_linux_ami_id)
 
   instance_type = each.value.instance_type
 
@@ -83,15 +83,12 @@ resource "aws_launch_template" "self_managed" {
     cluster_endpoint     = aws_eks_cluster.this.endpoint
     cluster_auth_base64  = aws_eks_cluster.this.certificate_authority[0].data
     bootstrap_extra_args = each.value.bootstrap_extra_args
-    })) : base64encode(templatefile("${path.module}/templates/al2_user_data.tpl", {
+    })) : base64encode(templatefile("${path.module}/templates/al2023_user_data.tpl", {
     cluster_name        = var.cluster_name
     cluster_endpoint    = aws_eks_cluster.this.endpoint
     cluster_auth_base64 = aws_eks_cluster.this.certificate_authority[0].data
-    # Auto-inject IPv6 args if needed, preserving any user args
-    bootstrap_extra_args = join(" ", [
-      each.value.bootstrap_extra_args,
-      var.cluster_ip_family == "ipv6" ? "--ip-family ipv6 --service-ipv6-cidr ${var.cluster_service_ipv6_cidr}" : ""
-    ])
+    # Note: For AL2023, bootstrap_extra_args should be valid YAML content for Kubelet config if provided
+    bootstrap_extra_args = each.value.bootstrap_extra_args
   }))
 
   iam_instance_profile {
