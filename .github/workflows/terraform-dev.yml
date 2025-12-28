@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'dev/**'
-      - 'modules/**'
+      - "dev/**"
+      - "modules/**"
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,7 @@ env:
   TF_IN_AUTOMATION: true
 
 concurrency:
-  group: terraform-${{ github.ref }}-${{ env.TARGET_ENV }}
+  group: terraform-${{ github.ref }}-dev
   cancel-in-progress: false
 
 jobs:
