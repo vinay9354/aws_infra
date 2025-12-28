@@ -285,7 +285,7 @@ When making changes:
 
 ## 📧 Support
 
-For questions or issues, contact the infrastructure team or create an issue in the repository.
+For questions or issues, contact the amaravinaykumar@gmail.com or create an issue in the repository.
 
 ---
 
