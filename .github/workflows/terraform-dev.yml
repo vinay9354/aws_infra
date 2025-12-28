@@ -114,12 +114,12 @@ jobs:
             # We don't exit 1 here to allow apply if approved, but you can enforce it.
           fi
 
-      - name: Mask and Upload Plan Summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: plan-summary-${{ github.run_id }}
-          path: dev/plan.txt
-          retention-days: 1
+      # - name: Mask and Upload Plan Summary
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: plan-summary-${{ github.run_id }}
+      #     path: dev/plan.txt
+      #     retention-days: 1
 
   apply:
     name: Terraform Apply
