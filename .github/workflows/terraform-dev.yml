@@ -12,17 +12,22 @@ on:
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 env:
   TF_VAR_aws_region: ap-south-1
   TF_VERSION: 1.14.1
   TARGET_ENV: dev
-  # Note: CODEBUILD_PROJECT_NAME is defined here for reference but hardcoded in runs-on due to GitHub Actions limitations.
-  CODEBUILD_PROJECT_NAME: codebuild-vinay-github-aws-infra-runner
+  TF_INPUT: false
+  TF_IN_AUTOMATION: true
+
+concurrency:
+  group: terraform-${{ github.ref }}-${{ env.TARGET_ENV }}
+  cancel-in-progress: false
 
 jobs:
-  plan:
-    name: Terraform Plan
+  validate:
+    name: Terraform Validate & Format
     runs-on: codebuild-vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
     defaults:
       run:
@@ -37,21 +42,172 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
-      - name: Terraform Init
-        run: terraform init
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive ..
+        continue-on-error: true
+
+      - name: Terraform Init (Backend Disabled)
+        run: terraform init -backend=false
 
       - name: Terraform Validate
         run: terraform validate
 
+      - name: Run TFLint
+        uses: terraform-linters/setup-tflint@v4
+        continue-on-error: true
+
+      - name: TFLint Check
+        run: |
+          cd ..
+          tflint --init
+          tflint --format compact
+        continue-on-error: true
+
+  check-state-lock:
+    name: Check Remote State Lock
+    runs-on: codebuild-vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    defaults:
+      run:
+        working-directory: dev
+    outputs:
+      lock_status: ${{ steps.state-lock.outputs.lock_status }}
+      lock_info: ${{ steps.state-lock.outputs.lock_info }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Check State Lock Status
+        id: state-lock
+        run: |
+          # Initialize to get backend configuration
+          terraform init -backend=true > /dev/null 2>&1 || true
+
+          # Check if there's an active lock on the state
+          echo "Checking for active state locks..."
+
+          # Get backend configuration
+          BACKEND_TYPE=$(terraform init -backend=false -json 2>/dev/null | grep -o '"type":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+          echo "Backend Type: $BACKEND_TYPE"
+
+          # For S3 backend, check for lock files
+          if [ "$BACKEND_TYPE" = "s3" ] || grep -q "backend \"s3\"" *.tf 2>/dev/null; then
+            echo "lock_status=s3-backend-detected" >> $GITHUB_OUTPUT
+
+            # Extract S3 bucket and dynamodb table from backend config
+            BUCKET=$(grep -A 10 'backend "s3"' *.tf 2>/dev/null | grep 'bucket' | head -1 | awk -F'"' '{print $2}' || echo "")
+            DYNAMODB=$(grep -A 10 'backend "s3"' *.tf 2>/dev/null | grep 'dynamodb_table' | head -1 | awk -F'"' '{print $2}' || echo "")
+
+            if [ -n "$DYNAMODB" ]; then
+              echo "lock_info=DynamoDB table: $DYNAMODB configured for state locking" >> $GITHUB_OUTPUT
+              echo "✓ Remote state locking enabled (DynamoDB: $DYNAMODB)"
+            else
+              echo "lock_info=Warning: No DynamoDB table configured for state locking" >> $GITHUB_OUTPUT
+              echo "⚠️  WARNING: State locking not fully configured!"
+            fi
+          else
+            echo "lock_status=no-remote-backend" >> $GITHUB_OUTPUT
+            echo "lock_info=Using local state file" >> $GITHUB_OUTPUT
+            echo "⚠️  WARNING: Using local state - remote state locking not available"
+          fi
+
+      - name: Display Lock Status
+        run: |
+          echo "State Lock Configuration Summary:"
+          echo "Status: ${{ steps.state-lock.outputs.lock_status }}"
+          echo "Info: ${{ steps.state-lock.outputs.lock_info }}"
+
+  plan:
+    name: Terraform Plan
+    needs: [validate, check-state-lock]
+    runs-on: codebuild-vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    defaults:
+      run:
+        working-directory: dev
+    timeout-minutes: 30
+    outputs:
+      plan_status: ${{ steps.plan.outcome }}
+      has_changes: ${{ steps.check-changes.outputs.has_changes }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+        timeout-minutes: 10
+
       - name: Terraform Plan
         id: plan
-        run: terraform plan -out=tfplan
-      
+        run: |
+          terraform plan -out=tfplan -no-color > plan.txt
+          cat plan.txt
+        timeout-minutes: 20
+
+      - name: Check for Changes
+        id: check-changes
+        run: |
+          if grep -q "No changes" plan.txt; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No infrastructure changes detected"
+          elif grep -q "Plan:" plan.txt; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            CHANGES=$(grep "Plan:" plan.txt | head -1)
+            echo "📋 Changes detected: $CHANGES"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for Destruction
+        run: |
+          if grep -q "will be destroyed" plan.txt; then
+            echo "⚠️  WARNING: This plan includes resource destruction!"
+            echo "## ⚠️ DESTRUCTIVE CHANGES DETECTED" >> $GITHUB_STEP_SUMMARY
+            echo "This Terraform plan will destroy the following resources:" >> $GITHUB_STEP_SUMMARY
+            grep "will be destroyed" plan.txt >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+        continue-on-error: false
+
       - name: Upload Plan Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan
+          name: tfplan-${{ github.run_id }}
           path: dev/tfplan
+          retention-days: 7
+
+      - name: Upload Plan Text Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-text-${{ github.run_id }}
+          path: dev/plan.txt
+          retention-days: 7
+
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('dev/plan.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📋 Terraform Plan\n\n\`\`\`\n${plan.substring(0, 65536)}\n\`\`\``
+            });
 
   apply:
     name: Terraform Apply
@@ -59,11 +215,15 @@ jobs:
     environment:
       name: dev
       url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-    if: ${{ needs.plan.result == 'success' }}
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.plan.outputs.has_changes == 'true'
     runs-on: codebuild-vinay-github-aws-infra-runner-${{ github.run_id }}-${{ github.run_attempt }}
     defaults:
       run:
         working-directory: dev
+    timeout-minutes: 30
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -71,7 +231,7 @@ jobs:
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan
+          name: tfplan-${{ github.run_id }}
           path: dev/
 
       - name: Setup Terraform
@@ -82,6 +242,95 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        timeout-minutes: 10
+
+      - name: Verify State Lock Before Apply
+        id: verify-lock
+        run: |
+          echo "Verifying remote state lock configuration..."
+
+          if terraform validate > /dev/null 2>&1; then
+            echo "✓ Terraform configuration validated"
+            echo "✓ Ready to acquire state lock during apply"
+          else
+            echo "✗ Configuration validation failed"
+            exit 1
+          fi
+        continue-on-error: false
 
       - name: Terraform Apply
-        run: terraform apply tfplan -auto-approve
+        id: apply
+        run: |
+          set -e
+          echo "Starting Terraform apply..."
+          terraform apply -auto-approve -no-color tfplan | tee apply.txt
+
+          APPLY_STATUS=$?
+          if [ $APPLY_STATUS -eq 0 ]; then
+            echo "apply_status=success" >> $GITHUB_OUTPUT
+            echo "✓ Apply completed successfully"
+          else
+            echo "apply_status=failed" >> $GITHUB_OUTPUT
+            echo "✗ Apply failed with status: $APPLY_STATUS"
+            exit $APPLY_STATUS
+          fi
+        timeout-minutes: 20
+
+      - name: Capture Terraform Outputs
+        id: outputs
+        if: success()
+        run: |
+          terraform output -no-color -json > outputs.json 2>/dev/null || echo "{}" > outputs.json
+          cat outputs.json
+
+      - name: Upload Apply Outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs-${{ github.run_id }}
+          path: dev/outputs.json
+          retention-days: 7
+
+      - name: Upload Apply Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-apply-log-${{ github.run_id }}
+          path: dev/apply.txt
+          retention-days: 7
+
+      - name: Publish Deployment Summary - Success
+        if: success()
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## ✅ Terraform Apply - Success
+
+          **Environment:** ${{ env.TARGET_ENV }}
+          **Region:** ${{ env.TF_VAR_aws_region }}
+          **Status:** Applied Successfully ✓
+          **Run ID:** ${{ github.run_id }}
+
+          ### Next Steps
+          - Review outputs artifact: \`terraform-outputs-${{ github.run_id }}\`
+          - Monitor CloudWatch for any deployment issues
+          - Validate infrastructure changes in AWS Console
+          EOF
+
+      - name: Publish Deployment Summary - Failure
+        if: failure()
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## ❌ Terraform Apply - Failed
+
+          **Environment:** ${{ env.TARGET_ENV }}
+          **Region:** ${{ env.TF_VAR_aws_region }}
+          **Status:** Apply Failed ✗
+          **Run ID:** ${{ github.run_id }}
+
+          ### Troubleshooting
+          - Check apply log: \`terraform-apply-log-${{ github.run_id }}\`
+          - Review error messages above
+          - Rollback may be required
+
+          **Contact:** Infrastructure team
+          EOF
