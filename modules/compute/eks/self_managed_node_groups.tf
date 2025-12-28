@@ -95,47 +95,27 @@ resource "aws_launch_template" "self_managed" {
     name = aws_iam_instance_profile.self_managed_node_group[each.key].name
   }
 
-  key_name = each.value.key_name
-
+  key_name               = each.value.key_name
   vpc_security_group_ids = [aws_security_group.node.id, var.create_cluster_security_group ? aws_security_group.cluster[0].id : var.cluster_security_group_id]
 
-
-
   block_device_mappings {
-
     device_name = "/dev/xvda"
-
     ebs {
-
       volume_size = 20 # Default
-
       volume_type = "gp3"
-
-      encrypted = true
-
-      kms_key_id = local.kms_key_arn
-
+      encrypted   = true
+      kms_key_id  = local.kms_key_arn
     }
-
   }
-
-
 
   # Enforce IMDSv2 for Security
 
   metadata_options {
-
-    http_endpoint = "enabled"
-
-    http_tokens = "required"
-
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
     http_put_response_hop_limit = 2
-
-    instance_metadata_tags = "enabled"
-
+    instance_metadata_tags      = "enabled"
   }
-
-
 
   tag_specifications {
     resource_type = "instance"
@@ -157,14 +137,11 @@ resource "aws_launch_template" "self_managed" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_autoscaling_group" "this" {
-  for_each = var.self_managed_node_groups
-
-  name_prefix = "${var.cluster_name}-${each.key}-"
-
-  desired_capacity = each.value.desired_capacity
-  max_size         = each.value.max_size
-  min_size         = each.value.min_size
-
+  for_each            = var.self_managed_node_groups
+  name_prefix         = "${var.cluster_name}-${each.key}-"
+  desired_capacity    = each.value.desired_capacity
+  max_size            = each.value.max_size
+  min_size            = each.value.min_size
   vpc_zone_identifier = length(each.value.subnet_ids != null ? each.value.subnet_ids : []) > 0 ? each.value.subnet_ids : (length(var.node_group_subnet_ids) > 0 ? var.node_group_subnet_ids : var.subnet_ids)
 
   launch_template {

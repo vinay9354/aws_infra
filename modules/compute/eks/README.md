@@ -1269,27 +1269,166 @@ Plan cluster upgrades with multiple node groups:
 ### Debugging Commands
 
 ```bash
-# Check cluster status
-aws eks describe-cluster --name <cluster-name> --region <region>
+# =========================
+# Cluster & Control Plane
+# =========================
 
-# Get node status
-kubectl get nodes -o wide
+# Verify cluster status and endpoint
+aws eks describe-cluster --name <cluster-name> --region <region> \
+  --query "cluster.{status:status,endpoint:endpoint,version:version}"
 
-# Check node events
-kubectl describe node <node-name>
+# Check control plane logs enabled
+aws eks describe-cluster --name <cluster-name> --region <region> \
+  --query "cluster.logging.clusterLogging"
 
-# View kubelet logs (SSH to node)
-journalctl -u kubelet -f
-
-# Check security group rules
-aws ec2 describe-security-groups --group-ids <sg-id>
-
-# View CloudWatch logs
+# View EKS control plane logs
 aws logs tail /aws/eks/<cluster-name>/cluster --follow
 
-# Test API connectivity
+# Test API server connectivity
 kubectl cluster-info
-kubectl get all --all-namespaces
+kubectl version --short
+
+# =========================
+# Nodes & Node Groups
+# =========================
+
+# List nodes with details
+kubectl get nodes -o wide
+
+# Describe a node (conditions, taints, capacity)
+kubectl describe node <node-name>
+
+# Check node group health
+aws eks describe-nodegroup \
+  --cluster-name <cluster-name> \
+  --nodegroup-name <nodegroup-name> \
+  --region <region>
+
+# View recent node events
+kubectl get events --field-selector involvedObject.kind=Node --sort-by=.lastTimestamp
+
+# Kubelet logs (SSH into node)
+journalctl -u kubelet -n 200
+journalctl -u kubelet -f
+
+# Container runtime logs (containerd)
+journalctl -u containerd -n 200
+
+# =========================
+# Pods & Workloads
+# =========================
+
+# Get pods with node placement
+kubectl get pods -o wide -n <namespace>
+
+# Describe pod (events, probes, scheduling)
+kubectl describe pod <pod-name> -n <namespace>
+
+# View pod logs
+kubectl logs <pod-name> -n <namespace>
+
+# View logs from a specific container
+kubectl logs <pod-name> -c <container-name> -n <namespace>
+
+# Previous container logs (crash loops)
+kubectl logs <pod-name> --previous -n <namespace>
+
+# Exec into a running pod
+kubectl exec -it <pod-name> -n <namespace> -- /bin/sh
+
+# =============================
+# Deployments, DaemonSets, Jobs
+# =============================
+
+# Check rollout status
+kubectl rollout status deployment/<deployment-name> -n <namespace>
+
+# Describe deployment
+kubectl describe deployment <deployment-name> -n <namespace>
+
+# Check DaemonSet health
+kubectl get ds -n <namespace>
+kubectl describe ds <daemonset-name> -n <namespace>
+
+# Debug failed Jobs
+kubectl get jobs -n <namespace>
+kubectl describe job <job-name> -n <namespace>
+
+# =========================
+# Networking & DNS
+# =========================
+
+# Check services and endpoints
+kubectl get svc -n <namespace>
+kubectl get endpoints -n <namespace>
+
+# Verify CoreDNS
+kubectl get pods -n kube-system -l k8s-app=kube-dns
+kubectl logs -n kube-system -l k8s-app=kube-dns
+
+# DNS resolution test inside cluster
+kubectl run dns-test --rm -it --image=busybox \
+  -- nslookup kubernetes.default
+
+# Check CNI (AWS VPC CNI)
+kubectl get pods -n kube-system -l k8s-app=aws-node
+kubectl logs -n kube-system -l k8s-app=aws-node
+
+# ==============================
+# Security & Access (IAM / RBAC)
+# ==============================
+
+# Verify aws-auth ConfigMap
+kubectl get configmap aws-auth -n kube-system -o yaml
+
+# Check current Kubernetes context
+kubectl config current-context
+kubectl config get-contexts
+
+# Check permissions for current user
+kubectl auth can-i get pods --all-namespaces
+kubectl auth can-i create deployments -n <namespace>
+
+# =========================
+# Load Balancers & Ingress
+# =========================
+
+# List ingress resources
+kubectl get ingress -A
+kubectl describe ingress <ingress-name> -n <namespace>
+
+# Check AWS Load Balancers created by EKS
+aws elbv2 describe-load-balancers
+
+# Check target group health
+aws elbv2 describe-target-health --target-group-arn <tg-arn>
+
+# ==========================
+# Events & General Debugging
+# ==========================
+
+# View all recent events
+kubectl get events -A --sort-by=.lastTimestamp
+
+# Watch events in real time
+kubectl get events -A -w
+
+# Check resource usage (metrics-server required)
+kubectl top nodes
+kubectl top pods -A
+
+# ==================================
+# Security Groups & Networking (AWS)
+# ==================================
+
+# Describe security group rules
+aws ec2 describe-security-groups --group-ids <sg-id>
+
+# Check route tables
+aws ec2 describe-route-tables --filters "Name=vpc-id,Values=<vpc-id>"
+
+# Verify VPC endpoints (ECR, STS, EC2, S3)
+aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=<vpc-id>"
 ```
 
 ## License
