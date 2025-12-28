@@ -99,7 +99,6 @@ locals {
         delete_on_termination = true
       }
       tags = {
-        Usecase  = "nat"
         Autostop = "true"
       }
     }
