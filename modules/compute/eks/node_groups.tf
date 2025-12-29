@@ -121,9 +121,9 @@ resource "aws_eks_node_group" "this" {
   )
 
   depends_on = [
-    aws_iam_role_policy_attachment.node_worker_policy,
-    aws_iam_role_policy_attachment.node_cni_policy,
-    aws_iam_role_policy_attachment.node_registry_policy,
+    aws_iam_role_policy_attachment.managed_node_worker_policy,
+    aws_iam_role_policy_attachment.managed_node_cni_policy,
+    aws_iam_role_policy_attachment.managed_node_registry_policy,
   ]
 
   # Ignore changes to scaling config if autoscaler is expected to manage it

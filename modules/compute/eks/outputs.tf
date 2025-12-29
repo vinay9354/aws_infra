@@ -124,5 +124,5 @@ output "cloudwatch_log_group_arn" {
 
 output "kubeconfig_command" {
   description = "Command to update local kubeconfig"
-  value       = "aws eks update-kubeconfig --name ${aws_eks_cluster.this.name} --region ${data.aws_region.current.name}"
+  value       = "aws eks update-kubeconfig --name ${aws_eks_cluster.this.name} --region ${data.aws_region.current.region}"
 }

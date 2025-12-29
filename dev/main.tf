@@ -231,7 +231,7 @@ module "iam_roles" {
 # --------------------------------
 # EKS Cluster Module
 # --------------------------------
-module "eks" {
+module "dev_eks" {
   source = "../modules/compute/eks"
 
   # Basic cluster configuration
