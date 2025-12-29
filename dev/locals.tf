@@ -200,7 +200,7 @@ locals {
   eks_cluster_config = {
     cluster_name           = "vinay-dev-eks-cluster"
     cluster_version        = "1.34"
-    subnet_ids             = [module.public_subnets["eks-1"].subnet_id, module.public_subnets["eks-2"].subnet_id, module.public_subnets["eks-3"].subnet_id]
+    subnet_ids             = [module.private_subnets["eks-1"].subnet_id, module.private_subnets["eks-2"].subnet_id, module.private_subnets["eks-3"].subnet_id]
     enable_cluster_logging = true
 
     # Endpoint access configuration
