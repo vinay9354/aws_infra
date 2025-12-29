@@ -227,3 +227,46 @@ module "iam_roles" {
   max_session_duration    = lookup(each.value, "max_session_duration", 3600)
   tags                    = lookup(each.value, "tags", {})
 }
+
+# --------------------------------
+# EKS Cluster Module
+# --------------------------------
+module "eks" {
+  source = "../modules/compute/eks"
+
+  # Basic cluster configuration
+  cluster_name    = local.eks_cluster_config.cluster_name
+  cluster_version = local.eks_cluster_config.cluster_version
+  vpc_id          = module.vpc.vpc_id
+  subnet_ids      = local.eks_cluster_config.subnet_ids
+
+  # Endpoint access
+  cluster_endpoint_private_access      = local.eks_cluster_config.cluster_endpoint_private_access
+  cluster_endpoint_public_access       = local.eks_cluster_config.cluster_endpoint_public_access
+  cluster_endpoint_public_access_cidrs = local.eks_cluster_config.cluster_endpoint_public_access_cidrs
+
+  # Cluster logging
+  cluster_enabled_log_types = local.eks_cluster_config.enable_cluster_logging ? [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ] : []
+
+  # IRSA and KMS
+  enable_irsa    = local.eks_cluster_config.enable_irsa
+  create_kms_key = local.eks_cluster_config.create_kms_key
+
+  # Enable cluster creator as admin
+  enable_cluster_creator_admin_permissions = true
+
+  # Managed Node Groups with Spot Instances
+  managed_node_groups = local.eks_cluster_config.managed_node_groups
+
+  # Cluster Add-ons
+  cluster_addons = local.eks_cluster_config.cluster_addons
+
+  # Tags
+  tags = local.eks_cluster_config.tags
+}

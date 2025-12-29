@@ -13,7 +13,7 @@ resource "aws_security_group" "cluster" {
     {
       "Name" = "${var.cluster_name}-cluster-sg"
     },
-    var.enable_karpenter ? {
+    var.enable_karpenter_tags ? {
       "karpenter.sh/discovery" = var.cluster_name
     } : {}
   )
@@ -123,14 +123,10 @@ resource "aws_security_group" "node" {
 
     {
 
-      "Name" = "${var.cluster_name}-node-sg"
-
+      "Name"                                      = "${var.cluster_name}-node-sg"
       "kubernetes.io/cluster/${var.cluster_name}" = "owned"
-
     },
-
-    var.enable_karpenter ? {
-
+    var.enable_karpenter_tags ? {
       "karpenter.sh/discovery" = var.cluster_name
 
     } : {}

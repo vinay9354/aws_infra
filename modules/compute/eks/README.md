@@ -679,7 +679,7 @@ access_entries = {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| `enable_karpenter` | Tag resources for Karpenter auto-discovery (security groups, subnets) | `bool` | `false` | No |
+| `enable_karpenter_tags` | Tag resources for Karpenter auto-discovery (security groups, subnets) | `bool` | `false` | No |
 
 ## Module Outputs
 
@@ -880,7 +880,7 @@ module "eks" {
   }
   
   # Karpenter Integration
-  enable_karpenter = true
+  enable_karpenter_tags = true
   
   # Tags
   tags = {
