@@ -214,6 +214,34 @@ locals {
     # KMS encryption
     create_kms_key = false
 
+    deletion_protection = false
+
+    # Control Plane Scaling Configuration
+    control_plane_scaling_config = {
+      tier = "standard"
+    }
+
+    # Zonal Shift Configuration (enables automatic shift during AZ events)
+    zonal_shift_config = {
+      enabled = true
+    }
+
+    # Upgrade Policy Configuration (STANDARD or EXTENDED support)
+    upgrade_policy = {
+      support_type = "STANDARD"
+    }
+
+    # Remote Network Configuration (for EKS Hybrid Nodes - optional)
+    # Uncomment and configure if using EKS Hybrid Nodes
+    # remote_network_config = {
+    #   remote_node_networks = {
+    #     cidrs = ["10.0.0.0/8"]  # On-premises network CIDR
+    #   }
+    #   remote_pod_networks = {
+    #     cidrs = ["172.30.0.0/16"]  # Pod network CIDR for hybrid nodes
+    #   }
+    # }
+
     # Managed Node Groups with Spot Instances
     managed_node_groups = {
       # Spot instance node group - cost-optimized
@@ -245,6 +273,7 @@ locals {
           "workload"      = "general"
           "capacity-type" = "spot"
           "environment"   = "dev"
+          "managed"       = "true"
         }
 
         # Taints (optional - use if you want dedicated spot node groups)

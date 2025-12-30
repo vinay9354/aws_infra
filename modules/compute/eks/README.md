@@ -211,7 +211,7 @@ kubectl get pods --all-namespaces
 | Name | Version |
 |------|---------|
 | **Terraform** | `~> 1.14.1` |
-| **AWS Provider** | `~> 6.22.1` |
+| **AWS Provider** | `~> 6.27.0` |
 | **Kubernetes Provider** | `~> 3.0.1` |
 | **TLS Provider** | `~> 4.1.0` |
 
@@ -1443,7 +1443,7 @@ aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=<vpc-id>"
   - Updated endpoint access pattern documentation to reflect private-first default
 - **Updated AMI type documentation**: Changed from `AL2_x86_64` to `AL2023_x86_64_STANDARD` to match current code
 - **Updated Kubernetes version examples**: All code examples now use version `1.34` (current default)
-- **Verified provider versions**: Terraform ~> 1.14.1, AWS ~> 6.22.1, Kubernetes ~> 3.0.1
+- **Verified provider versions**: Terraform ~> 1.14.1, AWS ~> 6.27.0, Kubernetes ~> 3.0.1
 
 ### Key Module Features (Verified Current)
 - ✅ EKS Access Entries API with optional legacy aws-auth ConfigMap support

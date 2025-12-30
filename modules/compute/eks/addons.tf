@@ -22,4 +22,6 @@ resource "aws_eks_addon" "this" {
   }
 
   tags = var.tags
+
+  depends_on = [aws_eks_node_group.this, aws_autoscaling_group.this]
 }

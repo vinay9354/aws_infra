@@ -292,4 +292,4 @@ For questions or issues, contact the amaravinaykumar@gmail.com or create an issu
 **Last Updated:** 30th November 2025  
 **Maintained By:** Vinay Datta  
 **Terraform Version:** ~> 1.14.1  
-**AWS Provider Version:** ~> 6.22.1
+**AWS Provider Version:** ~> 6.27.0

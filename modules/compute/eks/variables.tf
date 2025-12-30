@@ -9,6 +9,36 @@ variable "cluster_version" {
   default     = "1.34"
 }
 
+
+
+variable "bootstrap_self_managed_addons" {
+  description = "Install default unmanaged add-ons, such as aws-cni, kube-proxy, and CoreDNS during cluster creation. Defaults to true."
+  type        = bool
+  default     = false
+}
+
+variable "deletion_protection" {
+  description = "Enable deletion protection for the cluster. When enabled, the cluster cannot be deleted unless deletion protection is first disabled."
+  type        = bool
+  default     = false
+}
+
+variable "force_update_version" {
+  description = "Force version update by overriding upgrade-blocking readiness checks when updating a cluster."
+  type        = bool
+  default     = false
+}
+
+variable "cluster_timeouts" {
+  description = "Create, update, and delete timeout configurations for the EKS cluster"
+  type = object({
+    create = optional(string, "30m")
+    update = optional(string, "60m")
+    delete = optional(string, "15m")
+  })
+  default = {}
+}
+
 variable "vpc_id" {
   description = "ID of the VPC where the cluster and its nodes will be provisioned"
   type        = string
@@ -348,6 +378,44 @@ variable "aws_auth_accounts" {
   description = "List of account maps to add to the aws-auth configmap"
   type        = list(string)
   default     = []
+}
+
+variable "control_plane_scaling_config" {
+  description = "Configuration block for the control plane scaling tier. Valid values are standard, tier-xl, tier-2xl, or tier-4xl. Defaults to standard."
+  type = object({
+    tier = optional(string, "standard")
+  })
+  default = null
+}
+
+variable "zonal_shift_config" {
+  description = "Configuration block for zonal shift configuration. Enables automatic shift of traffic away from Availability Zones during events."
+  type = object({
+    enabled = optional(bool, false)
+  })
+
+  default = null
+}
+
+variable "remote_network_config" {
+  description = "Configuration block with remote network configuration for EKS Hybrid Nodes. Allows on-premises nodes to connect to the EKS cluster."
+  type = object({
+    remote_node_networks = optional(object({
+      cidrs = list(string)
+    }))
+    remote_pod_networks = optional(object({
+      cidrs = list(string)
+    }))
+  })
+  default = null
+}
+
+variable "upgrade_policy" {
+  description = "Configuration block for the support policy to use for the cluster. Valid values are EXTENDED or STANDARD."
+  type = object({
+    support_type = optional(string, "STANDARD")
+  })
+  default = null
 }
 
 variable "tags" {

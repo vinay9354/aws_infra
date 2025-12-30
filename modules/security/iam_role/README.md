@@ -86,7 +86,7 @@ module "cross_account_role" {
 | Name | Version |
 |------|---------|
 | terraform | ~> 1.14.1 |
-| aws | ~> 6.22.1 |
+| aws | ~> 6.27.0 |
 
 ## Inputs
 

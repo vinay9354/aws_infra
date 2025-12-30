@@ -261,11 +261,25 @@ module "dev_eks" {
   # Enable cluster creator as admin
   enable_cluster_creator_admin_permissions = true
 
+  # Control Plane Scaling Configuration
+  control_plane_scaling_config = lookup(local.eks_cluster_config, "control_plane_scaling_config", null)
+
+  # Zonal Shift Configuration (automatic AZ failover)
+  zonal_shift_config = lookup(local.eks_cluster_config, "zonal_shift_config", null)
+
+  # Upgrade Policy Configuration
+  upgrade_policy = lookup(local.eks_cluster_config, "upgrade_policy", null)
+
+  # Remote Network Configuration (EKS Hybrid Nodes support)
+  remote_network_config = lookup(local.eks_cluster_config, "remote_network_config", null)
+
   # Managed Node Groups with Spot Instances
   managed_node_groups = local.eks_cluster_config.managed_node_groups
 
   # Cluster Add-ons
   cluster_addons = local.eks_cluster_config.cluster_addons
+
+  deletion_protection = local.eks_cluster_config.deletion_protection
 
   # Tags
   tags = local.eks_cluster_config.tags
