@@ -144,6 +144,15 @@ resource "aws_autoscaling_group" "this" {
   min_size            = each.value.min_size
   vpc_zone_identifier = length(each.value.subnet_ids != null ? each.value.subnet_ids : []) > 0 ? each.value.subnet_ids : (length(var.node_group_subnet_ids) > 0 ? var.node_group_subnet_ids : var.subnet_ids)
 
+  # Ensure VPC CNI addon is created/active before self-managed instances boot so that
+  # the aws-node daemonset is available and nodes can become Ready.
+  # Note: referencing the addon will require `vpc-cni` to exist in var.cluster_addons.
+  # If `vpc-cni` is optional in your configuration and might be absent, consider
+  # applying in two phases instead (create cluster + vpc-cni first).
+  depends_on = [
+    aws_eks_addon.vpc_cni["vpc-cni"],
+  ]
+
   launch_template {
     id      = aws_launch_template.self_managed[each.key].id
     version = "$Latest"

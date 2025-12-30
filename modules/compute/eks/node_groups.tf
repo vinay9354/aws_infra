@@ -124,6 +124,11 @@ resource "aws_eks_node_group" "this" {
     aws_iam_role_policy_attachment.managed_node_worker_policy,
     aws_iam_role_policy_attachment.managed_node_cni_policy,
     aws_iam_role_policy_attachment.managed_node_registry_policy,
+    # Ensure VPC CNI addon is present before creating node group (if the addon is declared)
+    # This reference is safe when `vpc-cni` exists in the `var.cluster_addons` map because we create
+    # a dedicated `aws_eks_addon.vpc_cni` for that key. If `vpc-cni` is not present in the map,
+    # Terraform will error if referenced — in that case apply in two phases instead.
+    aws_eks_addon.vpc_cni["vpc-cni"],
   ]
 
   # Ignore changes to scaling config if autoscaler is expected to manage it
