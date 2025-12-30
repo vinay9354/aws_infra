@@ -42,7 +42,7 @@ private_subnets = {
     availability_zone = "ap-south-1b"
   }
   eks-3 = {
-    cidr_block        = "172.20.5.0/24"
+    cidr_block        = "172.20.6.0/24"
     availability_zone = "ap-south-1c"
   }
 }
