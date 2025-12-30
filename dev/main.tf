@@ -228,61 +228,61 @@ module "iam_roles" {
   tags                    = lookup(each.value, "tags", {})
 }
 
-# # --------------------------------
-# # EKS Cluster Module
-# # --------------------------------
-# module "dev_eks" {
-#   source = "../modules/compute/eks"
+# --------------------------------
+# EKS Cluster Module
+# --------------------------------
+module "dev_eks" {
+  source = "../modules/compute/eks"
 
-#   # Basic cluster configuration
-#   cluster_name    = local.eks_cluster_config.cluster_name
-#   cluster_version = local.eks_cluster_config.cluster_version
-#   vpc_id          = module.vpc.vpc_id
-#   subnet_ids      = local.eks_cluster_config.subnet_ids
+  # Basic cluster configuration
+  cluster_name    = local.eks_cluster_config.cluster_name
+  cluster_version = local.eks_cluster_config.cluster_version
+  vpc_id          = module.vpc.vpc_id
+  subnet_ids      = local.eks_cluster_config.subnet_ids
 
-#   # Endpoint access
-#   cluster_endpoint_private_access      = local.eks_cluster_config.cluster_endpoint_private_access
-#   cluster_endpoint_public_access       = local.eks_cluster_config.cluster_endpoint_public_access
-#   cluster_endpoint_public_access_cidrs = local.eks_cluster_config.cluster_endpoint_public_access_cidrs
+  # Endpoint access
+  cluster_endpoint_private_access      = local.eks_cluster_config.cluster_endpoint_private_access
+  cluster_endpoint_public_access       = local.eks_cluster_config.cluster_endpoint_public_access
+  cluster_endpoint_public_access_cidrs = local.eks_cluster_config.cluster_endpoint_public_access_cidrs
 
-#   access_entries = lookup(local.eks_cluster_config, "access_entries", [])
+  access_entries = lookup(local.eks_cluster_config, "access_entries", [])
 
-#   # Cluster logging
-#   cluster_enabled_log_types = local.eks_cluster_config.enable_cluster_logging ? [
-#     "api",
-#     "audit",
-#     "authenticator",
-#     "controllerManager",
-#     "scheduler"
-#   ] : []
+  # Cluster logging
+  cluster_enabled_log_types = local.eks_cluster_config.enable_cluster_logging ? [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ] : []
 
-#   # IRSA and KMS
-#   enable_irsa    = local.eks_cluster_config.enable_irsa
-#   create_kms_key = local.eks_cluster_config.create_kms_key
+  # IRSA and KMS
+  enable_irsa    = local.eks_cluster_config.enable_irsa
+  create_kms_key = local.eks_cluster_config.create_kms_key
 
-#   # Enable cluster creator as admin
-#   enable_cluster_creator_admin_permissions = true
+  # Enable cluster creator as admin
+  enable_cluster_creator_admin_permissions = true
 
-#   # Control Plane Scaling Configuration
-#   control_plane_scaling_config = lookup(local.eks_cluster_config, "control_plane_scaling_config", null)
+  # Control Plane Scaling Configuration
+  control_plane_scaling_config = lookup(local.eks_cluster_config, "control_plane_scaling_config", null)
 
-#   # Zonal Shift Configuration (automatic AZ failover)
-#   zonal_shift_config = lookup(local.eks_cluster_config, "zonal_shift_config", null)
+  # Zonal Shift Configuration (automatic AZ failover)
+  zonal_shift_config = lookup(local.eks_cluster_config, "zonal_shift_config", null)
 
-#   # Upgrade Policy Configuration
-#   upgrade_policy = lookup(local.eks_cluster_config, "upgrade_policy", null)
+  # Upgrade Policy Configuration
+  upgrade_policy = lookup(local.eks_cluster_config, "upgrade_policy", null)
 
-#   # Remote Network Configuration (EKS Hybrid Nodes support)
-#   remote_network_config = lookup(local.eks_cluster_config, "remote_network_config", null)
+  # Remote Network Configuration (EKS Hybrid Nodes support)
+  remote_network_config = lookup(local.eks_cluster_config, "remote_network_config", null)
 
-#   # Managed Node Groups with Spot Instances
-#   managed_node_groups = local.eks_cluster_config.managed_node_groups
+  # Managed Node Groups with Spot Instances
+  managed_node_groups = local.eks_cluster_config.managed_node_groups
 
-#   # Cluster Add-ons
-#   cluster_addons = local.eks_cluster_config.cluster_addons
+  # Cluster Add-ons
+  cluster_addons = local.eks_cluster_config.cluster_addons
 
-#   deletion_protection = local.eks_cluster_config.deletion_protection
+  deletion_protection = local.eks_cluster_config.deletion_protection
 
-#   # Tags
-#   tags = local.eks_cluster_config.tags
-# }
+  # Tags
+  tags = local.eks_cluster_config.tags
+}

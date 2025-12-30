@@ -196,242 +196,242 @@ locals {
 # # -------------------------
 # # EKS Cluster Locals
 # # -------------------------
-# locals {
-#   eks_cluster_config = {
-#     cluster_name           = "vinay-dev-infra-eks-cluster"
-#     cluster_version        = "1.34"
-#     subnet_ids             = [module.private_subnets["eks-1"].subnet_id, module.private_subnets["eks-2"].subnet_id, module.private_subnets["eks-3"].subnet_id]
-#     enable_cluster_logging = true
+locals {
+  eks_cluster_config = {
+    cluster_name           = "vinay-dev-infra-eks-cluster"
+    cluster_version        = "1.34"
+    subnet_ids             = [module.private_subnets["eks-1"].subnet_id, module.private_subnets["eks-2"].subnet_id, module.private_subnets["eks-3"].subnet_id]
+    enable_cluster_logging = true
 
-#     # Endpoint access configuration
-#     cluster_endpoint_private_access      = true
-#     cluster_endpoint_public_access       = false
-#     cluster_endpoint_public_access_cidrs = []
+    # Endpoint access configuration
+    cluster_endpoint_private_access      = true
+    cluster_endpoint_public_access       = false
+    cluster_endpoint_public_access_cidrs = []
 
-#     access_entries = {
-#       # Admin user
-#       admin_user = {
-#         principal_arn = "arn:aws:iam::516311263797:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_5fe30505cf49ba4a"
-#         type          = "STANDARD"
+    access_entries = {
+      # Admin user
+      admin_user = {
+        principal_arn = "arn:aws:iam::516311263797:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_5fe30505cf49ba4a"
+        type          = "STANDARD"
 
-#         policy_associations = {
-#           admin = {
-#             policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-#             access_scope = {
-#               type = "cluster"
-#             }
-#           }
-#         }
-#       }
-#     }
+        policy_associations = {
+          admin = {
+            policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+            access_scope = {
+              type = "cluster"
+            }
+          }
+        }
+      }
+    }
 
 
-#     # IRSA (IAM Roles for Service Accounts)
-#     enable_irsa = true
+    # IRSA (IAM Roles for Service Accounts)
+    enable_irsa = true
 
-#     # KMS encryption
-#     create_kms_key = false
+    # KMS encryption
+    create_kms_key = false
 
-#     deletion_protection = false
+    deletion_protection = false
 
-#     # Control Plane Scaling Configuration
-#     control_plane_scaling_config = {
-#       tier = "standard"
-#     }
+    # Control Plane Scaling Configuration
+    control_plane_scaling_config = {
+      tier = "standard"
+    }
 
-#     # Zonal Shift Configuration (enables automatic shift during AZ events)
-#     zonal_shift_config = {
-#       enabled = true
-#     }
+    # Zonal Shift Configuration (enables automatic shift during AZ events)
+    zonal_shift_config = {
+      enabled = true
+    }
 
-#     # Upgrade Policy Configuration (STANDARD or EXTENDED support)
-#     upgrade_policy = {
-#       support_type = "STANDARD"
-#     }
+    # Upgrade Policy Configuration (STANDARD or EXTENDED support)
+    upgrade_policy = {
+      support_type = "STANDARD"
+    }
 
-#     # Remote Network Configuration (for EKS Hybrid Nodes - optional)
-#     # Uncomment and configure if using EKS Hybrid Nodes
-#     # remote_network_config = {
-#     #   remote_node_networks = {
-#     #     cidrs = ["10.0.0.0/8"]  # On-premises network CIDR
-#     #   }
-#     #   remote_pod_networks = {
-#     #     cidrs = ["172.30.0.0/16"]  # Pod network CIDR for hybrid nodes
-#     #   }
-#     # }
+    # Remote Network Configuration (for EKS Hybrid Nodes - optional)
+    # Uncomment and configure if using EKS Hybrid Nodes
+    # remote_network_config = {
+    #   remote_node_networks = {
+    #     cidrs = ["10.0.0.0/8"]  # On-premises network CIDR
+    #   }
+    #   remote_pod_networks = {
+    #     cidrs = ["172.30.0.0/16"]  # Pod network CIDR for hybrid nodes
+    #   }
+    # }
 
-#     # Managed Node Groups with Spot Instances
-#     managed_node_groups = {
-#       # Spot instance node group - cost-optimized
-#       spot_nodes = {
-#         name            = "dev-spot-nodes"
-#         use_name_prefix = true
+    # Managed Node Groups with Spot Instances
+    managed_node_groups = {
+      # Spot instance node group - cost-optimized
+      spot_nodes = {
+        name            = "dev-spot-nodes"
+        use_name_prefix = true
 
-#         # Scaling configuration
-#         min_size     = 1
-#         max_size     = 2
-#         desired_size = 1
+        # Scaling configuration
+        min_size     = 1
+        max_size     = 2
+        desired_size = 1
 
-#         # Spot instance configuration
-#         capacity_type  = "SPOT"
-#         instance_types = ["t3a.medium", "t3.medium", "t2.medium"] # Multiple types for better availability
+        # Spot instance configuration
+        capacity_type  = "SPOT"
+        instance_types = ["t3a.medium", "t3.medium", "t2.medium"] # Multiple types for better availability
 
-#         # AMI and disk configuration
-#         ami_type  = "AL2023_x86_64_STANDARD"
-#         disk_size = 25
+        # AMI and disk configuration
+        ami_type  = "AL2023_x86_64_STANDARD"
+        disk_size = 25
 
-#         # Update strategy
-#         update_config = {
-#           max_unavailable_percentage = 25
-#         }
+        # Update strategy
+        update_config = {
+          max_unavailable_percentage = 25
+        }
 
-#         # Labels for workload scheduling
-#         labels = {
-#           "node-type"     = "spot"
-#           "workload"      = "general"
-#           "capacity-type" = "spot"
-#           "environment"   = "dev"
-#           "managed"       = "true"
-#         }
+        # Labels for workload scheduling
+        labels = {
+          "node-type"     = "spot"
+          "workload"      = "general"
+          "capacity-type" = "spot"
+          "environment"   = "dev"
+          "managed"       = "true"
+        }
 
-#         # Taints (optional - use if you want dedicated spot node groups)
-#         # taints = [
-#         #   {
-#         #     key    = "spot"
-#         #     value  = "true"
-#         #     effect = "NoSchedule"
-#         #   }
-#         # ]
+        # Taints (optional - use if you want dedicated spot node groups)
+        # taints = [
+        #   {
+        #     key    = "spot"
+        #     value  = "true"
+        #     effect = "NoSchedule"
+        #   }
+        # ]
 
-#         # Tags
-#         tags = {
-#           NodeGroup      = "spot-optimized"
-#           CostAllocation = "dev-spot"
-#         }
+        # Tags
+        tags = {
+          NodeGroup      = "spot-optimized"
+          CostAllocation = "dev-spot"
+        }
 
-#         # Launch template configuration
-#         create_launch_template = true
-#         block_device_mappings = {
-#           root = {
-#             device_name = "/dev/xvda"
-#             ebs = {
-#               volume_size           = 8
-#               volume_type           = "gp3"
-#               delete_on_termination = true
-#               encrypted             = true
-#               iops                  = 3000
-#               throughput            = 125
-#             }
-#           }
-#         }
+        # Launch template configuration
+        create_launch_template = true
+        block_device_mappings = {
+          root = {
+            device_name = "/dev/xvda"
+            ebs = {
+              volume_size           = 8
+              volume_type           = "gp3"
+              delete_on_termination = true
+              encrypted             = true
+              iops                  = 3000
+              throughput            = 125
+            }
+          }
+        }
 
-#         # IAM configuration
-#         create_iam_role = true
-#         iam_role_additional_policies = {
-#           # Add any additional policies needed for your workloads
-#         }
-#       }
+        # IAM configuration
+        create_iam_role = true
+        iam_role_additional_policies = {
+          # Add any additional policies needed for your workloads
+        }
+      }
 
-#       #   # Optional: On-demand node group for critical workloads
-#       #   dev_ondemand_nodes = {
-#       #     name            = "dev-ondemand-nodes"
-#       #     use_name_prefix = true
+      #   # Optional: On-demand node group for critical workloads
+      #   dev_ondemand_nodes = {
+      #     name            = "dev-ondemand-nodes"
+      #     use_name_prefix = true
 
-#       #     # Scaling configuration
-#       #     min_size     = 0
-#       #     max_size     = 3
-#       #     desired_size = 1
+      #     # Scaling configuration
+      #     min_size     = 0
+      #     max_size     = 3
+      #     desired_size = 1
 
-#       #     # On-demand instance configuration
-#       #     capacity_type  = "ON_DEMAND"
-#       #     instance_types = ["t3.medium"]
+      #     # On-demand instance configuration
+      #     capacity_type  = "ON_DEMAND"
+      #     instance_types = ["t3.medium"]
 
-#       #     # AMI and disk configuration
-#       #     ami_type  = "AL2023_x86_64_STANDARD"
-#       #     disk_size = 30
+      #     # AMI and disk configuration
+      #     ami_type  = "AL2023_x86_64_STANDARD"
+      #     disk_size = 30
 
-#       #     # Update strategy
-#       #     update_config = {
-#       #       max_unavailable_percentage = 25
-#       #     }
+      #     # Update strategy
+      #     update_config = {
+      #       max_unavailable_percentage = 25
+      #     }
 
-#       #     # Labels for workload scheduling
-#       #     labels = {
-#       #       "node-type"     = "ondemand"
-#       #       "workload"      = "critical"
-#       #       "capacity-type" = "ondemand"
-#       #       "environment"   = "dev"
-#       #     }
+      #     # Labels for workload scheduling
+      #     labels = {
+      #       "node-type"     = "ondemand"
+      #       "workload"      = "critical"
+      #       "capacity-type" = "ondemand"
+      #       "environment"   = "dev"
+      #     }
 
-#       #     # Taints
-#       #     taints = [
-#       #       {
-#       #         key    = "critical"
-#       #         value  = "true"
-#       #         effect = "NoSchedule"
-#       #       }
-#       #     ]
+      #     # Taints
+      #     taints = [
+      #       {
+      #         key    = "critical"
+      #         value  = "true"
+      #         effect = "NoSchedule"
+      #       }
+      #     ]
 
-#       #     # Tags
-#       #     tags = {
-#       #       NodeGroup      = "ondemand-critical"
-#       #       CostAllocation = "dev-ondemand"
-#       #     }
+      #     # Tags
+      #     tags = {
+      #       NodeGroup      = "ondemand-critical"
+      #       CostAllocation = "dev-ondemand"
+      #     }
 
-#       #     # Launch template configuration
-#       #     create_launch_template = true
-#       #     block_device_mappings = {
-#       #       root = {
-#       #         device_name = "/dev/xvda"
-#       #         ebs = {
-#       #           volume_size           = 30
-#       #           volume_type           = "gp3"
-#       #           delete_on_termination = true
-#       #           encrypted             = true
-#       #           iops                  = 3000
-#       #           throughput            = 125
-#       #         }
-#       #       }
-#     }
+      #     # Launch template configuration
+      #     create_launch_template = true
+      #     block_device_mappings = {
+      #       root = {
+      #         device_name = "/dev/xvda"
+      #         ebs = {
+      #           volume_size           = 30
+      #           volume_type           = "gp3"
+      #           delete_on_termination = true
+      #           encrypted             = true
+      #           iops                  = 3000
+      #           throughput            = 125
+      #         }
+      #       }
+    }
 
-#     #     # IAM configuration
-#     #     create_iam_role = true
-#     #     iam_role_additional_policies = {
-#     #       # Add any additional policies needed for your workloads
-#     #     }
-#     #   }
-#     # }
+    #     # IAM configuration
+    #     create_iam_role = true
+    #     iam_role_additional_policies = {
+    #       # Add any additional policies needed for your workloads
+    #     }
+    #   }
+    # }
 
-#     # EKS Add-ons configuration
-#     cluster_addons = {
-#       vpc-cni = {
-#         addon_version               = "v1.20.4-eksbuild.1"
-#         resolve_conflicts_on_create = "OVERWRITE"
-#         resolve_conflicts_on_update = "OVERWRITE"
-#       }
+    # EKS Add-ons configuration
+    cluster_addons = {
+      vpc-cni = {
+        addon_version               = "v1.20.4-eksbuild.1"
+        resolve_conflicts_on_create = "OVERWRITE"
+        resolve_conflicts_on_update = "OVERWRITE"
+      }
 
-#       kube-proxy = {
-#         addon_version               = "v1.34.0-eksbuild.4"
-#         resolve_conflicts_on_create = "OVERWRITE"
-#         resolve_conflicts_on_update = "OVERWRITE"
-#       }
+      kube-proxy = {
+        addon_version               = "v1.34.0-eksbuild.4"
+        resolve_conflicts_on_create = "OVERWRITE"
+        resolve_conflicts_on_update = "OVERWRITE"
+      }
 
-#       coredns = {
-#         addon_version               = "v1.12.4-eksbuild.1"
-#         resolve_conflicts_on_create = "OVERWRITE"
-#         resolve_conflicts_on_update = "OVERWRITE"
-#       }
+      coredns = {
+        addon_version               = "v1.12.4-eksbuild.1"
+        resolve_conflicts_on_create = "OVERWRITE"
+        resolve_conflicts_on_update = "OVERWRITE"
+      }
 
-#       # ebs-csi-driver = {
-#       #   addon_version               = "v1.31.0-eksbuild.1"
-#       #   resolve_conflicts_on_create = "OVERWRITE"
-#       #   resolve_conflicts_on_update = "OVERWRITE"
-#       # }
-#     }
+      # ebs-csi-driver = {
+      #   addon_version               = "v1.31.0-eksbuild.1"
+      #   resolve_conflicts_on_create = "OVERWRITE"
+      #   resolve_conflicts_on_update = "OVERWRITE"
+      # }
+    }
 
-#     # Tags for all resources
-#     tags = {
-#       Purpose = "EKS-Cluster"
-#     }
-#   }
-# }
+    # Tags for all resources
+    tags = {
+      Purpose = "EKS-Cluster"
+    }
+  }
+}
