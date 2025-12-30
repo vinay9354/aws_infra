@@ -16,6 +16,7 @@ provider "aws" {
       Owner       = "vinay"
       Managed_by  = "terraform"
       Environment = "dev"
+      Region      = data.aws_region.current.region
     }
   }
 }

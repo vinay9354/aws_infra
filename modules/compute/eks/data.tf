@@ -9,7 +9,8 @@ data "aws_ssm_parameter" "eks_optimized_ami_al2023" {
 
 # Lookup EKS Optimized AMI for Windows 2022
 data "aws_ssm_parameter" "eks_optimized_ami_windows_2022" {
-  name = "/aws/service/eks/optimized-ami/${var.cluster_version}/windows_2022_full/recommended/image_id"
+  name = "/aws/service/ami-windows-latest/Windows_Server-2022-English-Full-EKS_Optimized-${var.cluster_version}/image_id"
+
 }
 
 # Helper local to determine default AMI based on platform/type if user didn't provide one

@@ -105,7 +105,7 @@ module "eks" {
   source = "../../modules/compute/eks"
 
   cluster_name    = "my-cluster"
-  cluster_version = "1.30"
+  cluster_version = "1.34"
   
   vpc_id    = aws_vpc.main.id
   subnet_ids = aws_subnet.private[*].id
@@ -239,7 +239,7 @@ The identity executing Terraform must have permissions to create/manage:
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | `cluster_name` | Name of the EKS cluster (must be 1-100 characters, alphanumeric and hyphens) | `string` | n/a | **Yes** |
-| `cluster_version` | Kubernetes version for the cluster (e.g., "1.30", "1.29") | `string` | `"1.34llama"` | No |
+| `cluster_version` | Kubernetes version for the cluster (e.g., "1.34", "1.30") | `string` | `"1.34"` | No |
 | `cluster_ip_family` | IP family for pod and service addresses (`ipv4` or `ipv6`) | `string` | `"ipv4"` | No |
 | `cluster_service_ipv4_cidr` | CIDR block for Kubernetes service IPs (IPv4). If null, AWS assigns 10.100.0.0/16 or 172.20.0.0/16 | `string` | `null` | No |
 | `cluster_service_ipv6_cidr` | CIDR block for Kubernetes pod and service IPs (IPv6, required if `cluster_ip_family = "ipv6"`) | `string` | `null` | No |
@@ -265,15 +265,15 @@ Data Plane Subnets = node_group_subnet_ids (if provided) → subnet_ids
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| `cluster_endpoint_public_access` | Enable public API endpoint (enables 0.0.0.0/0 unless restricted by CIDR) | `bool` | `true` | No |
-| `cluster_endpoint_public_access_cidrs` | CIDR blocks allowed to access the public API endpoint | `list(string)` | `["0.0.0.0/0"]` | No |
+| `cluster_endpoint_public_access` | Enable public API endpoint (enables 0.0.0.0/0 unless restricted by CIDR) | `bool` | `false` | No |
+| `cluster_endpoint_public_access_cidrs` | CIDR blocks allowed to access the public API endpoint | `list(string)` | `[]` | No |
 | `cluster_endpoint_private_access` | Enable private API endpoint (for same-VPC access without internet routing) | `bool` | `true` | No |
 
 **Endpoint Access Patterns:**
-- **Public + Private** (default): Access from anywhere + internal access
-- **Public only**: `cluster_endpoint_private_access = false`
-- **Private only**: `cluster_endpoint_public_access = false`
-- **Restricted public**: Set `cluster_endpoint_public_access_cidrs = ["203.0.113.0/24"]`
+- **Private only** (default): Private API endpoint enabled, public access disabled
+- **Private + Public**: `cluster_endpoint_public_access = true` and set `cluster_endpoint_public_access_cidrs` (e.g., `["0.0.0.0/0"]`)
+- **Public only**: `cluster_endpoint_private_access = false, cluster_endpoint_public_access = true`
+- **Restricted public**: Set `cluster_endpoint_public_access = true` and `cluster_endpoint_public_access_cidrs = ["203.0.113.0/24"]`
 
 ### Security Groups
 
@@ -341,7 +341,7 @@ Data Plane Subnets = node_group_subnet_ids (if provided) → subnet_ids
   desired_size    = optional(number, 1)           # Desired number of instances
   
   # Instance Configuration
-  ami_type        = optional(string, "AL2_x86_64") # AMI type (AL2_x86_64, AL2_x86_64_GPU, etc.)
+  ami_type        = optional(string, "AL2023_x86_64_STANDARD") # AMI type (AL2023_x86_64_STANDARD, AL2023_x86_64_GPU, etc.)
   ami_id          = optional(string)               # Custom AMI ID (overrides ami_type)
   instance_types  = optional(list(string), ["t3.medium"]) # EC2 instance types
   capacity_type   = optional(string, "ON_DEMAND") # ON_DEMAND or SPOT
@@ -759,7 +759,7 @@ module "eks" {
 
   # Cluster Configuration
   cluster_name    = local.cluster_name
-  cluster_version = "1.30"
+  cluster_version = "1.34"
   
   # Networking
   vpc_id = aws_vpc.main.id
@@ -911,7 +911,7 @@ module "eks_windows" {
   source = "../../modules/compute/eks"
 
   cluster_name    = "windows-cluster"
-  cluster_version = "1.28"
+  cluster_version = "1.34"
   
   vpc_id    = aws_vpc.main.id
   subnet_ids = aws_subnet.private[*].id
@@ -954,6 +954,7 @@ module "eks_ipv6" {
   source = "../../modules/compute/eks"
 
   cluster_name         = "ipv6-cluster"
+  cluster_version      = "1.34"
   cluster_ip_family    = "ipv6"
   cluster_service_ipv6_cidr = "fd00:100::/108"
   
@@ -978,7 +979,8 @@ module "eks_ipv6" {
 module "eks_dev" {
   source = "../../modules/compute/eks"
 
-  cluster_name = "dev-cluster"
+  cluster_name    = "dev-cluster"
+  cluster_version = "1.34"
   vpc_id       = aws_vpc.dev.id
   subnet_ids   = aws_subnet.dev_private[*].id
   
@@ -1430,6 +1432,30 @@ aws ec2 describe-route-tables --filters "Name=vpc-id,Values=<vpc-id>"
 # Verify VPC endpoints (ECR, STS, EC2, S3)
 aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=<vpc-id>"
 ```
+
+## Recent Updates (Synchronized with Code)
+
+### Latest Changes
+- **Fixed cluster_version default**: Updated from erroneous `"1.34llama"` to correct `"1.34"`
+- **Corrected API endpoint access defaults**:
+  - `cluster_endpoint_public_access`: Changed from `true` to `false` (private-first approach)
+  - `cluster_endpoint_public_access_cidrs`: Changed from `["0.0.0.0/0"]` to `[]`
+  - Updated endpoint access pattern documentation to reflect private-first default
+- **Updated AMI type documentation**: Changed from `AL2_x86_64` to `AL2023_x86_64_STANDARD` to match current code
+- **Updated Kubernetes version examples**: All code examples now use version `1.34` (current default)
+- **Verified provider versions**: Terraform ~> 1.14.1, AWS ~> 6.22.1, Kubernetes ~> 3.0.1
+
+### Key Module Features (Verified Current)
+- ✅ EKS Access Entries API with optional legacy aws-auth ConfigMap support
+- ✅ IRSA (IAM Roles for Service Accounts) with OIDC provider
+- ✅ Managed Node Groups with AL2023 default AMI and launch template support
+- ✅ Self-Managed Node Groups with Windows and Linux support
+- ✅ Fargate Profiles for serverless pod execution
+- ✅ KMS encryption for secrets and optional CloudWatch logs
+- ✅ IPv4 and IPv6 support with flexible subnet placement
+- ✅ Comprehensive security groups with customizable rules
+- ✅ EKS add-ons management (VPC CNI, CoreDNS, kube-proxy, etc.)
+- ✅ CloudWatch logging with configurable retention
 
 ## License
 

@@ -91,8 +91,8 @@ jobs:
         # HARDENING: Do NOT output binary plan to artifacts (contains secrets).
         # We generate a text summary for the log/artifact instead.
         run: |
-          terraform plan -no-color -out=tfplan
-          terraform show -no-color tfplan > plan.txt
+          terraform plan -out=tfplan
+          terraform show tfplan > plan.txt
 
       - name: Check for Changes
         id: check-changes
