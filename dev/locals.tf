@@ -260,7 +260,7 @@ locals {
 
         # AMI and disk configuration
         ami_type  = "AL2023_x86_64_STANDARD"
-        disk_size = 8
+        disk_size = 25
 
         # Update strategy
         update_config = {
