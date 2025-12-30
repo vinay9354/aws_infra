@@ -274,7 +274,7 @@ locals {
 
         # Spot instance configuration
         capacity_type  = "SPOT"
-        instance_types = ["t3a.medium", "t3.medium", "t2.medium"] # Multiple types for better availability
+        instance_types = ["t3a.medium"] # Multiple types for better availability
 
         # AMI and disk configuration
         ami_type  = "AL2023_x86_64_STANDARD"
