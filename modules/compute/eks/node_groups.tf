@@ -25,7 +25,7 @@ resource "aws_launch_template" "this" {
     }
   }
 
-  # If user provides custom block devices, we could merge them here, 
+  # If user provides custom block devices, we could merge them here,
   # but for simplicity in this "production base", we default to secure gp3.
 
   tag_specifications {
@@ -69,7 +69,7 @@ resource "aws_eks_node_group" "this" {
 
   cluster_name           = aws_eks_cluster.this.name
   node_group_name        = each.value.use_name_prefix ? null : "${var.cluster_name}-${each.key}"
-  node_group_name_prefix = each.value.use_name_prefix ? "${var.cluster_name}-${each.key}-" : null
+  node_group_name_prefix = each.value.use_name_prefix ? (length("${var.cluster_name}-${each.key}") > 37 ? substr("${var.cluster_name}-${each.key}", 0, 37) : "${var.cluster_name}-${each.key}") : null
 
   node_role_arn = each.value.create_iam_role ? aws_iam_role.managed_node_group[each.key].arn : each.value.iam_role_arn
   subnet_ids    = length(each.value.subnet_ids != null ? each.value.subnet_ids : []) > 0 ? each.value.subnet_ids : (length(var.node_group_subnet_ids) > 0 ? var.node_group_subnet_ids : var.subnet_ids)

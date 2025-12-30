@@ -245,7 +245,7 @@ locals {
     # Managed Node Groups with Spot Instances
     managed_node_groups = {
       # Spot instance node group - cost-optimized
-      dev_spot_nodes = {
+      spot_nodes = {
         name            = "dev-spot-nodes"
         use_name_prefix = true
 
