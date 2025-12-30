@@ -32,6 +32,14 @@ resource "aws_eks_addon" "vpc_cni" {
     }
   }
 
+  dynamic "pod_identity_association" {
+    for_each = lookup(each.value, "pod_identity_association", [])
+    content {
+      role_arn        = pod_identity_association.value.role_arn
+      service_account = pod_identity_association.value.service_account
+    }
+  }
+
   tags = var.tags
 
   # Intentionally do not depend on node groups: the VPC CNI must be present/ACTIVE
@@ -61,6 +69,14 @@ resource "aws_eks_addon" "others" {
       create = timeouts.value.create
       update = timeouts.value.update
       delete = timeouts.value.delete
+    }
+  }
+
+  dynamic "pod_identity_association" {
+    for_each = lookup(each.value, "pod_identity_association", [])
+    content {
+      role_arn        = pod_identity_association.value.role_arn
+      service_account = pod_identity_association.value.service_account
     }
   }
 

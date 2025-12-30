@@ -1,10 +1,21 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Helper Data Sources and Locals
+# Retrieves current AWS account and region information, and defines a local variable for the KMS key ARN.
+# ---------------------------------------------------------------------------------------------------------------------
+
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 locals {
+  # Determine the KMS key ARN to use: either a newly created one or an existing one provided by the user.
   kms_key_arn = var.create_kms_key ? aws_kms_key.this[0].arn : var.kms_key_arn
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# KMS Key and Alias
+# Manages the AWS KMS Key for EKS secrets encryption and its associated alias.
+# ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_kms_key" "this" {
   count = var.create_kms_key ? 1 : 0
@@ -23,6 +34,11 @@ resource "aws_kms_alias" "this" {
   name          = "alias/${var.cluster_name}"
   target_key_id = aws_kms_key.this[0].key_id
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# KMS Key Policy Document
+# Defines the IAM policy for the KMS Key, granting necessary permissions for EKS and other AWS services.
+# ---------------------------------------------------------------------------------------------------------------------
 
 data "aws_iam_policy_document" "kms_key_policy" {
   count = var.create_kms_key ? 1 : 0

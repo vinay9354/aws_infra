@@ -1,32 +1,30 @@
 # ---------------------------------------------------------------------------------------------------------------------
-# Launch Templates (Optional but Recommended)
+# EKS Managed Node Groups - Launch Templates
+# Defines launch templates for EKS managed node groups, enabling detailed instance configuration.
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_launch_template" "this" {
-
   for_each    = { for k, v in var.managed_node_groups : k => v if v.create_launch_template }
   name_prefix = "${var.cluster_name}-${each.key}-"
   description = "Launch template for EKS managed node group ${each.key}"
 
-  # Fallback to default AL2 AMI if no custom AMI provided.
-
-  # This prevents passing 'null' which causes API errors, and ensures a valid AMI is always present in the LT.
-
+  # Prioritize custom AMI ID; otherwise, use the default based on ami_type if available.
+  # Using 'null' directly would cause API errors, so ami_id is explicitly set only if provided.
   image_id               = lookup(each.value, "ami_id", null)
   update_default_version = true
 
   block_device_mappings {
-    device_name = "/dev/xvda"
+    device_name = "/dev/xvda" # Root volume
     ebs {
       volume_size = each.value.disk_size
       volume_type = "gp3"
       encrypted   = true
-      # kms_key_id  = var.kms_key_arn # Optional: Use specific key if provided
+      # kms_key_id  = var.kms_key_arn # Optional: Use specific KMS key if provided for EBS encryption
     }
   }
 
-  # If user provides custom block devices, we could merge them here,
-  # but for simplicity in this "production base", we default to secure gp3.
+  # If custom block device mappings are needed, they can be merged here.
+  # For this module's "production base" design, we default to a secure gp3 volume.
 
   tag_specifications {
     resource_type = "instance"
@@ -50,10 +48,10 @@ resource "aws_launch_template" "this" {
     )
   }
 
-  # Setup for Metadata Options (Security Best Practice)
+  # Enforce IMDSv2 for enhanced security against SSRF vulnerabilities.
   metadata_options {
     http_endpoint               = "enabled"
-    http_tokens                 = "required" # IMDSv2
+    http_tokens                 = "required" # IMDSv2 enforced
     http_put_response_hop_limit = 2
   }
 
@@ -61,7 +59,8 @@ resource "aws_launch_template" "this" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Managed Node Groups
+# EKS Managed Node Groups
+# Provisions and manages EKS worker nodes using AWS Managed Node Groups.
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_eks_node_group" "this" {
@@ -80,7 +79,7 @@ resource "aws_eks_node_group" "this" {
     min_size     = each.value.min_size
   }
 
-  # Update Configuration
+  # Optional: Update configuration for rolling updates of node group instances.
   dynamic "update_config" {
     for_each = each.value.update_config != null ? [each.value.update_config] : []
     content {
@@ -93,7 +92,7 @@ resource "aws_eks_node_group" "this" {
   capacity_type  = each.value.capacity_type
   instance_types = each.value.instance_types
 
-  # Configuration via Launch Template
+  # Use a launch template if specified for advanced configuration.
   dynamic "launch_template" {
     for_each = each.value.create_launch_template ? [1] : []
     content {
@@ -102,10 +101,10 @@ resource "aws_eks_node_group" "this" {
     }
   }
 
-  # Labels
+  # Kubernetes labels for node group, used for pod scheduling.
   labels = each.value.labels
 
-  # Taints
+  # Kubernetes taints for node group, used to repel pods.
   dynamic "taint" {
     for_each = each.value.taints
     content {
@@ -120,19 +119,17 @@ resource "aws_eks_node_group" "this" {
     each.value.tags
   )
 
+  # Explicit dependencies to ensure IAM roles and VPC CNI addon are ready before node group creation.
   depends_on = [
     aws_iam_role_policy_attachment.managed_node_worker_policy,
     aws_iam_role_policy_attachment.managed_node_cni_policy,
     aws_iam_role_policy_attachment.managed_node_registry_policy,
-    # Ensure VPC CNI addon is present before creating node group (if the addon is declared)
-    # This reference is safe when `vpc-cni` exists in the `var.cluster_addons` map because we create
-    # a dedicated `aws_eks_addon.vpc_cni` for that key. If `vpc-cni` is not present in the map,
-    # Terraform will error if referenced — in that case apply in two phases instead.
+    # The VPC CNI addon must be active before nodes can fully join the cluster.
     aws_eks_addon.vpc_cni["vpc-cni"],
   ]
 
-  # Ignore changes to scaling config if autoscaler is expected to manage it
   lifecycle {
+    # Ignore changes to 'desired_size' if an autoscaler (like Cluster Autoscaler) is managing it.
     ignore_changes = [scaling_config[0].desired_size]
   }
 }

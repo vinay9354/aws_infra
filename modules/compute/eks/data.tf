@@ -1,5 +1,6 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Data Sources for EKS AMIs
+# Retrieves EKS optimized AMI IDs for various operating systems.
 # ---------------------------------------------------------------------------------------------------------------------
 
 # Lookup EKS Optimized AMI for Amazon Linux 2023 (Standard)
@@ -10,7 +11,6 @@ data "aws_ssm_parameter" "eks_optimized_ami_al2023" {
 # Lookup EKS Optimized AMI for Windows 2022
 data "aws_ssm_parameter" "eks_optimized_ami_windows_2022" {
   name = "/aws/service/ami-windows-latest/Windows_Server-2022-English-Full-EKS_Optimized-${var.cluster_version}/image_id"
-
 }
 
 # Helper local to determine default AMI based on platform/type if user didn't provide one

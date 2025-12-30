@@ -1,3 +1,7 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# EKS Cluster Configuration
+# ---------------------------------------------------------------------------------------------------------------------
+
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
@@ -8,8 +12,6 @@ variable "cluster_version" {
   type        = string
   default     = "1.34"
 }
-
-
 
 variable "bootstrap_self_managed_addons" {
   description = "Install default unmanaged add-ons, such as aws-cni, kube-proxy, and CoreDNS during cluster creation. Defaults to true."
@@ -39,6 +41,10 @@ variable "cluster_timeouts" {
   default = {}
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Networking and VPC Configuration
+# ---------------------------------------------------------------------------------------------------------------------
+
 variable "vpc_id" {
   description = "ID of the VPC where the cluster and its nodes will be provisioned"
   type        = string
@@ -61,12 +67,6 @@ variable "node_group_subnet_ids" {
   default     = []
 }
 
-variable "enable_cluster_creator_admin_permissions" {
-  description = "Indicates whether or not to add the cluster creator (the identity used by Terraform) as an administrator via Access Entry. Defaults to true."
-  type        = bool
-  default     = true
-}
-
 variable "cluster_endpoint_public_access" {
   description = "Indicates whether or not the Amazon EKS public API server endpoint is enabled"
   type        = bool
@@ -78,7 +78,6 @@ variable "cluster_endpoint_public_access_cidrs" {
   type        = list(string)
   default     = []
 }
-
 
 variable "cluster_endpoint_private_access" {
   description = "Indicates whether or not the Amazon EKS private API server endpoint is enabled"
@@ -108,10 +107,14 @@ variable "cluster_service_ipv6_cidr" {
   default     = null
 }
 
-variable "cluster_enabled_log_types" {
-  description = "A list of the desired control plane logging to enable"
-  type        = list(string)
-  default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+# ---------------------------------------------------------------------------------------------------------------------
+# Security and Access Configuration
+# ---------------------------------------------------------------------------------------------------------------------
+
+variable "enable_cluster_creator_admin_permissions" {
+  description = "Indicates whether or not to add the cluster creator (the identity used by Terraform) as an administrator via Access Entry. Defaults to true."
+  type        = bool
+  default     = true
 }
 
 variable "create_cluster_security_group" {
@@ -202,6 +205,44 @@ variable "enable_irsa" {
   default     = true
 }
 
+variable "access_entries" {
+  description = "Map of access entries to add to the cluster (replaces aws-auth)"
+  type = map(object({
+    principal_arn     = string
+    kubernetes_groups = optional(list(string), [])
+    type              = optional(string, "STANDARD")
+    user_name         = optional(string)
+    policy_associations = optional(map(object({
+      policy_arn = string
+      access_scope = object({
+        type       = string
+        namespaces = optional(list(string))
+      })
+    })), {})
+  }))
+  default = {}
+}
+
+variable "pod_identity_associations" {
+  description = "Map of EKS Pod Identity Associations to create"
+  type = map(object({
+    namespace       = string
+    service_account = string
+    role_arn        = string
+  }))
+  default = {}
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------------------------------------------------
+
+variable "cluster_enabled_log_types" {
+  description = "A list of the desired control plane logging to enable"
+  type        = list(string)
+  default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+}
+
 variable "cloudwatch_log_group_retention_in_days" {
   description = "Number of days to retain log events. Default retention - 90 days"
   type        = number
@@ -213,6 +254,10 @@ variable "cloudwatch_log_group_kms_key_id" {
   type        = string
   default     = null
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Compute Configuration (Node Groups & Fargate)
+# ---------------------------------------------------------------------------------------------------------------------
 
 variable "managed_node_groups" {
   description = "Map of managed node group definitions to create"
@@ -273,13 +318,13 @@ variable "self_managed_node_groups" {
     ami_id           = optional(string) # Optional, defaults to EKS optimized AMI
 
     # User data settings
-
     bootstrap_extra_args    = optional(string, "")
     user_data_template_path = optional(string)          # Path to custom user data template
     platform                = optional(string, "linux") # "linux" or "windows"
     key_name                = optional(string)
     block_device_mappings   = optional(any, {})
     tags                    = optional(map(string), {})
+
     # IAM
     iam_role_arn                 = optional(string)
     create_iam_role              = optional(bool, true)
@@ -305,6 +350,10 @@ variable "fargate_profiles" {
   default = {}
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Add-ons Configuration
+# ---------------------------------------------------------------------------------------------------------------------
+
 variable "cluster_addons" {
   description = "Map of cluster add-ons to enable"
   type = map(object({
@@ -319,9 +368,17 @@ variable "cluster_addons" {
       update = optional(string)
       delete = optional(string)
     }))
+    pod_identity_association = optional(list(object({
+      role_arn        = string
+      service_account = string
+    })), [])
   }))
   default = {}
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Integration and Advanced Features
+# ---------------------------------------------------------------------------------------------------------------------
 
 variable "enable_karpenter_tags" {
   description = "Determines whether to tag the security group and subnets for Karpenter usage"
@@ -329,25 +386,52 @@ variable "enable_karpenter_tags" {
   default     = false
 }
 
-variable "access_entries" {
-  description = "Map of access entries to add to the cluster (replaces aws-auth)"
-  type = map(object({
-    principal_arn     = string
-    kubernetes_groups = optional(list(string), [])
-    type              = optional(string, "STANDARD")
-    user_name         = optional(string)
-    policy_associations = optional(map(object({
-      policy_arn = string
-      access_scope = object({
-        type       = string
-        namespaces = optional(list(string))
-      })
-    })), {})
-  }))
-  default = {}
+variable "control_plane_scaling_config" {
+  description = "Configuration block for the control plane scaling tier. Valid values are standard, tier-xl, tier-2xl, or tier-4xl. Defaults to standard."
+  type = object({
+    tier = optional(string, "standard")
+  })
+  default = null
 }
 
-# Legacy AWS Auth variables
+variable "zonal_shift_config" {
+  description = "Configuration block for zonal shift configuration. Enables automatic shift of traffic away from Availability Zones during events."
+  type = object({
+    enabled = optional(bool, false)
+  })
+  default = null
+}
+
+variable "remote_network_config" {
+  description = "Configuration block with remote network configuration for EKS Hybrid Nodes. Allows on-premises nodes to connect to the EKS cluster."
+  type = object({
+    remote_node_networks = optional(object({
+      cidrs = list(string)
+    }))
+    remote_pod_networks = optional(object({
+      cidrs = list(string)
+    }))
+  })
+  default = null
+}
+
+variable "upgrade_policy" {
+  description = "Configuration block for the support policy to use for the cluster. Valid values are EXTENDED or STANDARD."
+  type = object({
+    support_type = optional(string, "STANDARD")
+  })
+  default = null
+}
+
+variable "tags" {
+  description = "A map of tags to add to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Legacy AWS Auth ConfigMap Variables (Use Access Entries for modern approach)
+# ---------------------------------------------------------------------------------------------------------------------
 
 variable "manage_aws_auth_configmap" {
   description = "Determines whether to manage the aws-auth configmap"
@@ -378,48 +462,4 @@ variable "aws_auth_accounts" {
   description = "List of account maps to add to the aws-auth configmap"
   type        = list(string)
   default     = []
-}
-
-variable "control_plane_scaling_config" {
-  description = "Configuration block for the control plane scaling tier. Valid values are standard, tier-xl, tier-2xl, or tier-4xl. Defaults to standard."
-  type = object({
-    tier = optional(string, "standard")
-  })
-  default = null
-}
-
-variable "zonal_shift_config" {
-  description = "Configuration block for zonal shift configuration. Enables automatic shift of traffic away from Availability Zones during events."
-  type = object({
-    enabled = optional(bool, false)
-  })
-
-  default = null
-}
-
-variable "remote_network_config" {
-  description = "Configuration block with remote network configuration for EKS Hybrid Nodes. Allows on-premises nodes to connect to the EKS cluster."
-  type = object({
-    remote_node_networks = optional(object({
-      cidrs = list(string)
-    }))
-    remote_pod_networks = optional(object({
-      cidrs = list(string)
-    }))
-  })
-  default = null
-}
-
-variable "upgrade_policy" {
-  description = "Configuration block for the support policy to use for the cluster. Valid values are EXTENDED or STANDARD."
-  type = object({
-    support_type = optional(string, "STANDARD")
-  })
-  default = null
-}
-
-variable "tags" {
-  description = "A map of tags to add to all resources"
-  type        = map(string)
-  default     = {}
 }

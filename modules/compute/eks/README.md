@@ -12,9 +12,20 @@ A comprehensive, production-grade Terraform module for provisioning Amazon EKS (
 - [Module Inputs](#module-inputs)
 - [Module Outputs](#module-outputs)
 - [Usage Examples](#usage-examples)
+  - [Example 1: Production-Grade Cluster with Mixed Compute](#example-1-production-grade-cluster-with-mixed-compute)
+  - [Example 2: Windows Node Cluster](#example-2-windows-node-cluster)
+  - [Example 3: IPv6 Cluster](#example-3-ipv6-cluster)
+  - [Example 4: Minimal Development Cluster](#example-4-minimal-development-cluster)
+  - [Example 5: EKS Pod Identity with Service Accounts](#example-5-eks-pod-identity-with-service-accounts)
+  - [Example 6: Highly Available Production Cluster with Advanced Features](#example-6-highly-available-production-cluster-with-advanced-features)
+  - [Example 7: Cost-Optimized Cluster with Spot Instances and Autoscaling](#example-7-cost-optimized-cluster-with-spot-instances-and-autoscaling)
+  - [Example 8: GPU-Enabled Cluster for ML Workloads](#example-8-gpu-enabled-cluster-for-ml-workloads)
+  - [Example 9: EKS Hybrid Nodes (On-Premises + AWS)](#example-9-eks-hybrid-nodes-on-premises--aws)
+  - [Example 10: Enterprise Multi-Tenant Cluster with Security Hardening](#example-10-enterprise-multi-tenant-cluster-with-security-hardening)
 - [Security Considerations](#security-considerations)
 - [Best Practices](#best-practices)
 - [Troubleshooting](#troubleshooting)
+- [Recent Updates](#recent-updates)
 - [License](#license)
 
 ## Overview
@@ -95,6 +106,25 @@ This module provides a complete, opinionated implementation of AWS EKS with the 
 - **Configuration Overwrites**: YAML-based add-on configuration customization
 - **Timeout Control**: Configurable create/update/delete timeouts for long-running add-ons
 - **Service Account Integration**: Automatic service account role assignment for add-ons
+- **Smart Dependency Management**: VPC CNI created before node groups (required for pod networking), other add-ons created after nodes exist
+- **Pod Identity Associations**: Direct service account to IAM role bindings via native EKS Pod Identity
+
+### Pod Identity
+
+- **EKS Pod Identity**: Native AWS solution for pod-level IAM credentials (alternative to IRSA)
+- **Service Account Binding**: Automatic association between Kubernetes service accounts and IAM roles
+- **No annotations required**: Unlike IRSA, Pod Identity doesn't require service account annotations
+- **Fine-grained Access**: Pod-specific permissions without node-level credential sharing
+- **Seamless Integration**: Works alongside traditional IRSA for gradual migration
+
+
+
+### Advanced Cluster Features
+
+- **Control Plane Scaling**: Dynamic tier upgrades (standard, tier-xl, tier-2xl, tier-4xl) for performance and availability
+- **Zonal Shift**: Automatic traffic shifting away from affected availability zones during events
+- **EKS Hybrid Nodes**: Connect on-premises infrastructure and external nodes to your EKS cluster
+- **Extended Support**: Choose between standard (14-month) and extended (24-month) support windows for cluster versions
 
 ## Quick Start
 
@@ -660,6 +690,40 @@ access_entries = {
 }
 ```
 
+#### Pod Identity Associations
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| `pod_identity_associations` | Map of EKS Pod Identity Associations to create for workload authentication without sharing node credentials | `map(object)` | `{}` | No |
+
+**Schema for each pod identity association:**
+```hcl
+{
+  namespace       = string     # Kubernetes namespace where the service account resides (required)
+  service_account = string     # Service account name (required)
+  role_arn        = string     # IAM role ARN to associate with the service account (required)
+}
+```
+
+**Example:**
+```hcl
+pod_identity_associations = {
+  ebs_csi = {
+    namespace       = "kube-system"
+    service_account = "ebs-csi-controller-sa"
+    role_arn        = aws_iam_role.ebs_csi.arn
+  }
+  
+  external_dns = {
+    namespace       = "kube-system"
+    service_account = "external-dns"
+    role_arn        = aws_iam_role.external_dns.arn
+  }
+}
+```
+
+**Note**: EKS Pod Identity is an alternative to IRSA that simplifies IAM role binding for service accounts. It does not require annotation of service accounts.
+
 #### Legacy AWS Auth ConfigMap
 
 | Name | Description | Type | Default | Required |
@@ -680,6 +744,57 @@ access_entries = {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | `enable_karpenter_tags` | Tag resources for Karpenter auto-discovery (security groups, subnets) | `bool` | `false` | No |
+
+### Advanced Cluster Features
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| `control_plane_scaling_config` | Configuration for control plane scaling tier (standard, tier-xl, tier-2xl, tier-4xl for improved performance and availability) | `object` | `null` | No |
+| `zonal_shift_config` | Configuration for automatic zonal shift to manage traffic during availability zone events | `object` | `null` | No |
+| `remote_network_config` | Configuration for EKS Hybrid Nodes to connect on-premises infrastructure to the cluster | `object` | `null` | No |
+| `upgrade_policy` | Configuration for cluster support policy (STANDARD or EXTENDED support with longer maintenance windows) | `object` | `null` | No |
+
+**Control Plane Scaling Configuration:**
+```hcl
+control_plane_scaling_config = {
+  tier = "standard"  # Options: "standard", "tier-xl", "tier-2xl", "tier-4xl"
+}
+```
+Valid tiers provide progressively higher resource allocation and availability:
+- `standard`: Default tier for most clusters
+- `tier-xl`: 2x control plane resources, recommended for clusters with >10 node groups
+- `tier-2xl`: 4x control plane resources, for very large or demanding clusters
+- `tier-4xl`: 8x control plane resources, for massive scale deployments
+
+**Zonal Shift Configuration:**
+```hcl
+zonal_shift_config = {
+  enabled = true  # Enable automatic shift of traffic away from affected AZs during events
+}
+```
+When enabled, EKS automatically shifts cluster traffic away from an availability zone experiencing issues.
+
+**Remote Network Configuration (EKS Hybrid Nodes):**
+```hcl
+remote_network_config = {
+  remote_node_networks = {
+    cidrs = ["10.0.0.0/8"]  # CIDR blocks of on-premises networks where hybrid nodes run
+  }
+  remote_pod_networks = {
+    cidrs = ["192.168.0.0/16"]  # CIDR blocks for pods running on hybrid nodes
+  }
+}
+```
+Enables connecting on-premises EC2 instances or virtual machines as nodes in your EKS cluster.
+
+**Upgrade Policy Configuration:**
+```hcl
+upgrade_policy = {
+  support_type = "STANDARD"  # Options: "STANDARD" or "EXTENDED"
+}
+```
+- `STANDARD`: 14-month support (default)
+- `EXTENDED`: 24-month extended support window for longer maintenance cycles
 
 ## Module Outputs
 
@@ -994,6 +1109,895 @@ module "eks_dev" {
   }
 }
 ```
+
+### Example 5: EKS Pod Identity with Service Accounts
+
+This example demonstrates using native EKS Pod Identity for workload IAM credentials without annotations:
+
+```hcl
+# Create IAM roles for workloads
+resource "aws_iam_role" "ebs_csi_role" {
+  name = "ebs-csi-controller"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "pods.eks.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role       = aws_iam_role.ebs_csi_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+resource "aws_iam_role" "external_dns_role" {
+  name = "external-dns"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "pods.eks.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "external_dns" {
+  role       = aws_iam_role.external_dns_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
+}
+
+# EKS cluster with Pod Identity associations
+module "eks_pod_identity" {
+  source = "../../modules/compute/eks"
+
+  cluster_name    = "pod-identity-cluster"
+  cluster_version = "1.34"
+  
+  vpc_id    = aws_vpc.main.id
+  subnet_ids = aws_subnet.private[*].id
+  
+  # Enable IRSA for broader compatibility
+  enable_irsa = true
+  
+  managed_node_groups = {
+    general = {
+      min_size       = 2
+      max_size       = 4
+      desired_size   = 2
+      instance_types = ["t3.large"]
+    }
+  }
+  
+  # EKS Add-ons
+  cluster_addons = {
+    vpc-cni = {
+      addon_version = "v1.14.0"
+    }
+    coredns = {
+      addon_version = "v1.10.1"
+    }
+    kube-proxy = {
+      addon_version = "v1.28.1"
+    }
+    aws-ebs-csi-driver = {
+      addon_version = "v1.24.0"
+      # Service account will be created by the add-on
+    }
+  }
+  
+  # Pod Identity Associations - Direct binding without annotations
+  pod_identity_associations = {
+    ebs_csi = {
+      namespace       = "kube-system"
+      service_account = "ebs-csi-controller-sa"
+      role_arn        = aws_iam_role.ebs_csi_role.arn
+    }
+    
+    external_dns = {
+      namespace       = "kube-system"
+      service_account = "external-dns-sa"
+      role_arn        = aws_iam_role.external_dns_role.arn
+    }
+  }
+  
+  tags = {
+    Environment = "production"
+    PodIdentity = "enabled"
+  }
+}
+
+output "cluster_name" {
+  value = module.eks_pod_identity.cluster_name
+}
+
+# Note: No need to annotate service accounts with eks.amazonaws.com/role-arn
+# Pod Identity handles the binding automatically
+```
+
+### Example 6: Highly Available Production Cluster with Advanced Features
+
+This example uses control plane scaling, zonal shift, and extended support for enterprise requirements:
+
+```hcl
+module "eks_ha_production" {
+  source = "../../modules/compute/eks"
+
+  cluster_name    = "ha-prod-cluster"
+  cluster_version = "1.34"
+  
+  vpc_id = aws_vpc.production.id
+  subnet_ids = concat(
+    aws_subnet.private_us_east_1a[*].id,
+    aws_subnet.private_us_east_1b[*].id,
+    aws_subnet.private_us_east_1c[*].id
+  )
+  
+  # Separate subnets for control plane
+  control_plane_subnet_ids = aws_subnet.control_plane[*].id
+  
+  # High Availability Configuration
+  # Upgrade to tier-xl for control plane scaling (recommended for >10 node groups)
+  control_plane_scaling_config = {
+    tier = "tier-xl"  # 2x standard resources for HA
+  }
+  
+  # Zonal shift for automatic failover during AZ events
+  zonal_shift_config = {
+    enabled = true
+  }
+  
+  # Extended support for 24-month upgrade windows
+  upgrade_policy = {
+    support_type = "EXTENDED"
+  }
+  
+  # API endpoint configuration for production
+  cluster_endpoint_public_access       = true
+  cluster_endpoint_public_access_cidrs = ["10.0.0.0/8"]  # Only internal networks
+  cluster_endpoint_private_access      = true
+  
+  # KMS encryption for secrets
+  create_kms_key         = true
+  kms_key_administrators = [aws_iam_role.security_team.arn]
+  
+  # CloudWatch logging
+  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  cloudwatch_log_group_retention_in_days = 365  # 1 year retention
+  cloudwatch_log_group_kms_key_id        = aws_kms_key.logs.arn
+  
+  # Multiple node groups for workload separation
+  managed_node_groups = {
+    system = {
+      name             = "system"
+      min_size         = 3
+      max_size         = 6
+      desired_size     = 3
+      instance_types   = ["t3.large"]
+      capacity_type    = "ON_DEMAND"
+      labels           = { workload = "system" }
+      
+      taints = [{
+        key    = "system"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+    
+    general = {
+      name             = "general"
+      min_size         = 3
+      max_size         = 10
+      desired_size     = 5
+      instance_types   = ["m5.xlarge", "m6i.xlarge"]
+      capacity_type    = "ON_DEMAND"
+      labels           = { workload = "general" }
+    }
+    
+    memory_optimized = {
+      name             = "memory"
+      min_size         = 2
+      max_size         = 6
+      desired_size     = 2
+      instance_types   = ["r5.2xlarge", "r6i.2xlarge"]
+      capacity_type    = "ON_DEMAND"
+      labels           = { workload = "memory-intensive" }
+      
+      taints = [{
+        key    = "memory-intensive"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+    
+    spot_batch = {
+      name             = "spot"
+      min_size         = 2
+      max_size         = 20
+      desired_size     = 5
+      instance_types   = ["m5.xlarge", "m6i.xlarge", "c5.xlarge", "c6i.xlarge"]
+      capacity_type    = "SPOT"
+      labels           = { workload = "batch", cost-optimized = "true" }
+      
+      taints = [{
+        key    = "spot"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+  }
+  
+  # Fargate for variable workloads
+  fargate_profiles = {
+    system = {
+      name = "kube-system"
+      selectors = [{
+        namespace = "kube-system"
+      }]
+    }
+    
+    batch_jobs = {
+      name = "batch"
+      selectors = [{
+        namespace = "batch"
+        labels    = { type = "batch-job" }
+      }]
+    }
+  }
+  
+  # Add-ons with advanced configuration
+  cluster_addons = {
+    vpc-cni = {
+      addon_version = "v1.14.0"
+      configuration_values = jsonencode({
+        env = {
+          WARM_IP_TARGET = "5"
+        }
+      })
+    }
+    
+    coredns = {
+      addon_version = "v1.10.1"
+    }
+    
+    kube-proxy = {
+      addon_version = "v1.28.1"
+    }
+    
+    aws-ebs-csi-driver = {
+      addon_version = "v1.24.0"
+    }
+    
+    aws-efs-csi-driver = {
+      addon_version = "v1.7.0"
+    }
+  }
+  
+  # Access control with role-based policies
+  enable_irsa                             = true
+  enable_cluster_creator_admin_permissions = false  # Explicit control
+  
+  access_entries = {
+    cluster_admins = {
+      principal_arn = aws_iam_role.platform_team.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+    
+    developers = {
+      principal_arn = aws_iam_role.developers.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        edit = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+          access_scope = {
+            type       = "namespace"
+            namespaces = ["default", "development", "staging"]
+          }
+        }
+      }
+    }
+    
+    read_only = {
+      principal_arn = aws_iam_role.auditors.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        view = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
+  
+  # Security groups
+  create_cluster_security_group = true
+  
+  cluster_security_group_additional_rules = {
+    allow_internal_api = {
+      type        = "ingress"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/8"]
+      description = "Allow internal API access"
+    }
+  }
+  
+  node_security_group_enable_recommended_rules = true
+  
+  # Karpenter integration for auto-scaling
+  enable_karpenter_tags = true
+  
+  tags = {
+    Environment = "production"
+    HA          = "enabled"
+    Team        = "platform"
+    CostCenter  = "engineering"
+  }
+}
+
+output "cluster_name" {
+  value = module.eks_ha_production.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.eks_ha_production.cluster_endpoint
+}
+
+output "kubeconfig_command" {
+  value = module.eks_ha_production.kubeconfig_command
+}
+```
+
+### Example 7: Cost-Optimized Cluster with Spot Instances and Autoscaling
+
+This example demonstrates cost optimization using Spot instances, mixed capacity types, and smart scaling:
+
+```hcl
+module "eks_cost_optimized" {
+  source = "../../modules/compute/eks"
+
+  cluster_name    = "cost-optimized-cluster"
+  cluster_version = "1.34"
+  
+  vpc_id    = aws_vpc.main.id
+  subnet_ids = aws_subnet.private[*].id
+  
+  # Cost-friendly API access
+  cluster_endpoint_public_access       = false
+  cluster_endpoint_private_access      = true
+  
+  managed_node_groups = {
+    # Minimal on-demand for system workloads
+    system = {
+      min_size       = 2
+      max_size       = 3
+      desired_size   = 2
+      instance_types = ["t3.large"]
+      capacity_type  = "ON_DEMAND"
+      labels         = { workload = "system" }
+      
+      taints = [{
+        key    = "system"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+    
+    # Spot instances for significant cost savings (70-90% discount)
+    spot_primary = {
+      min_size       = 3
+      max_size       = 20
+      desired_size   = 5
+      
+      # Diversified instance types for better Spot availability
+      instance_types = [
+        "t3.large", "t3a.large", "t4g.large",
+        "m5.large", "m6i.large", "m7i.large",
+        "c5.large", "c6i.large", "c7i.large"
+      ]
+      
+      capacity_type  = "SPOT"
+      labels         = { workload = "spot", cost-optimized = "true" }
+      
+      taints = [{
+        key    = "spot"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+      
+      # Allow pod disruption budgets for graceful handling
+      update_config = {
+        max_unavailable_percentage = 50
+      }
+    }
+    
+    # On-demand backup for critical workloads
+    on_demand_backup = {
+      min_size       = 1
+      max_size       = 5
+      desired_size   = 1
+      instance_types = ["t3.large"]
+      capacity_type  = "ON_DEMAND"
+      labels         = { workload = "backup", cost-optimized = "true" }
+    }
+  }
+  
+  # Fargate for bursty workloads (no idle cost)
+  fargate_profiles = {
+    batch = {
+      name = "batch-jobs"
+      selectors = [{
+        namespace = "batch"
+      }]
+    }
+    
+    cron = {
+      name = "scheduled-tasks"
+      selectors = [{
+        namespace = "cron"
+      }]
+    }
+  }
+  
+  cluster_addons = {
+    vpc-cni = {
+      addon_version = "v1.14.0"
+    }
+    coredns = {
+      addon_version = "v1.10.1"
+    }
+    kube-proxy = {
+      addon_version = "v1.28.1"
+    }
+  }
+  
+  tags = {
+    CostCenter     = "engineering"
+    CostOptimized  = "true"
+  }
+}
+
+# For cost monitoring, you should also deploy:
+# - Kubecost (in-cluster cost visibility)
+# - AWS Cost Anomaly Detection
+# - AWS Cost & Usage Reports integration
+```
+
+### Example 8: GPU-Enabled Cluster for ML Workloads
+
+This example sets up a cluster optimized for machine learning with GPU support:
+
+```hcl
+module "eks_gpu_ml" {
+  source = "../../modules/compute/eks"
+
+  cluster_name    = "gpu-ml-cluster"
+  cluster_version = "1.34"
+  
+  vpc_id    = aws_vpc.main.id
+  subnet_ids = aws_subnet.private[*].id
+  
+  # Default nodes for control plane and support workloads
+  managed_node_groups = {
+    cpu_system = {
+      min_size       = 2
+      max_size       = 4
+      desired_size   = 2
+      instance_types = ["t3.large"]
+      labels         = { workload = "system" }
+      
+      taints = [{
+        key    = "system"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+    
+    # GPU nodes for training (NVIDIA A100 or H100)
+    gpu_training = {
+      min_size       = 0
+      max_size       = 5
+      desired_size   = 1
+      instance_types = ["g4dn.12xlarge", "g4dn.24xlarge"]  # NVIDIA T4 GPUs
+      ami_type       = "AL2_x86_64_GPU"
+      disk_size      = 100
+      
+      labels = {
+        workload  = "training"
+        gpu       = "true"
+        gpu-type  = "nvidia-t4"
+      }
+      
+      taints = [{
+        key    = "nvidia.com/gpu"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+      
+      iam_role_additional_policies = {
+        S3Access = "arn:aws:iam::aws:policy/AmazonS3FullAccess"  # For data/model access
+      }
+    }
+    
+    # CPU nodes for inference (cost-effective)
+    cpu_inference = {
+      min_size       = 1
+      max_size       = 10
+      desired_size   = 2
+      instance_types = ["c5.2xlarge", "c6i.2xlarge"]
+      labels         = { workload = "inference", gpu = "false" }
+    }
+  }
+  
+  cluster_addons = {
+    vpc-cni = {
+      addon_version = "v1.14.0"
+    }
+    coredns = {
+      addon_version = "v1.10.1"
+    }
+    kube-proxy = {
+      addon_version = "v1.28.1"
+    }
+    aws-ebs-csi-driver = {
+      addon_version = "v1.24.0"
+    }
+  }
+  
+  tags = {
+    Workload = "ML-Training"
+    GPU      = "enabled"
+  }
+}
+
+# Note: After cluster creation, install NVIDIA GPU drivers:
+# kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.13.0/nvidia-device-plugin.yml
+#
+# Verify GPU availability:
+# kubectl get nodes -L nvidia.com/gpu
+# kubectl describe node <gpu-node>
+```
+
+### Example 9: EKS Hybrid Nodes (On-Premises + AWS)
+
+This example configures a cluster that spans AWS and on-premises infrastructure:
+
+```hcl
+# Prerequisites: On-premises nodes must have network connectivity to AWS
+# - Direct Connect or VPN tunnel configured
+# - Security groups/firewalls allow required ports
+
+module "eks_hybrid" {
+  source = "../../modules/compute/eks"
+
+  cluster_name    = "hybrid-cluster"
+  cluster_version = "1.34"
+  
+  vpc_id    = aws_vpc.main.id
+  subnet_ids = aws_subnet.private[*].id
+  
+  # Configure remote networks for on-premises infrastructure
+  remote_network_config = {
+    # CIDR blocks where on-premises nodes run
+    remote_node_networks = {
+      cidrs = [
+        "192.168.0.0/16",  # Corporate data center
+        "10.50.0.0/16"     # Branch office
+      ]
+    }
+    
+    # CIDR blocks for pods running on hybrid nodes
+    remote_pod_networks = {
+      cidrs = [
+        "172.16.0.0/16",   # Pod CIDR for on-premises nodes
+        "172.17.0.0/16"
+      ]
+    }
+  }
+  
+  # AWS-managed nodes for cloud workloads
+  managed_node_groups = {
+    cloud = {
+      min_size       = 2
+      max_size       = 8
+      desired_size   = 2
+      instance_types = ["m5.xlarge"]
+      labels = {
+        location = "aws"
+        workload = "cloud-native"
+      }
+    }
+    
+    batch = {
+      min_size       = 0
+      max_size       = 10
+      desired_size   = 0
+      instance_types = ["c5.2xlarge"]
+      capacity_type  = "SPOT"
+      labels = {
+        location = "aws"
+        workload = "batch"
+      }
+      
+      taints = [{
+        key    = "batch"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+  }
+  
+  cluster_addons = {
+    vpc-cni = {
+      addon_version = "v1.14.0"
+    }
+    coredns = {
+      addon_version = "v1.10.1"
+    }
+    kube-proxy = {
+      addon_version = "v1.28.1"
+    }
+  }
+  
+  tags = {
+    Infrastructure = "hybrid"
+    OnPremises     = "enabled"
+  }
+}
+
+# After cluster creation, register on-premises nodes:
+# 1. Install EKS Hybrid Node Agent on on-premises servers
+# 2. Run: aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=tag:Name,Values=on-premises-node" --parameters commands="sudo /opt/eks-hybrid/bin/node-agent start"
+# 3. Verify: kubectl get nodes -L topology.kubernetes.io/zone
+```
+
+### Example 10: Enterprise Multi-Tenant Cluster with Security Hardening
+
+This example demonstrates best practices for multi-tenant environments with security and isolation:
+
+```hcl
+module "eks_enterprise" {
+  source = "../../modules/compute/eks"
+
+  cluster_name    = "enterprise-multi-tenant"
+  cluster_version = "1.34"
+  
+  vpc_id = aws_vpc.main.id
+  
+  # Separate subnets for different security zones
+  control_plane_subnet_ids = aws_subnet.secure[*].id
+  node_group_subnet_ids    = aws_subnet.nodes[*].id
+  
+  # Security-first configuration
+  cluster_endpoint_public_access       = false
+  cluster_endpoint_private_access      = true
+  
+  create_cluster_security_group = true
+  cluster_security_group_additional_rules = {
+    allow_bastion_api = {
+      type                     = "ingress"
+      from_port                = 443
+      to_port                  = 443
+      protocol                 = "tcp"
+      source_security_group_id = aws_security_group.bastion.id
+      description              = "Allow bastion host access"
+    }
+  }
+  
+  node_security_group_enable_recommended_rules = true
+  node_security_group_additional_rules = {
+    allow_velero_backup = {
+      type        = "egress"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Allow backup egress"
+    }
+  }
+  
+  # Encryption at rest for secrets
+  create_kms_key         = true
+  kms_key_administrators = [aws_iam_role.security_team.arn]
+  
+  # Comprehensive logging
+  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  cloudwatch_log_group_retention_in_days = 180
+  cloudwatch_log_group_kms_key_id        = aws_kms_key.logs.arn
+  
+  # Isolated node groups per tenant
+  managed_node_groups = {
+    system = {
+      min_size       = 3
+      max_size       = 5
+      desired_size   = 3
+      instance_types = ["t3.large"]
+      labels         = { tenant = "system", isolation = "strict" }
+      
+      taints = [{
+        key    = "system"
+        value  = "true"
+        effect = "NoSchedule"
+      }]
+    }
+    
+    tenant_a = {
+      min_size       = 2
+      max_size       = 6
+      desired_size   = 2
+      instance_types = ["m5.large"]
+      labels         = { tenant = "tenant-a", isolation = "strict" }
+      
+      taints = [{
+        key    = "tenant"
+        value  = "tenant-a"
+        effect = "NoSchedule"
+      }]
+      
+      # Dedicated IAM role with minimal permissions
+      create_iam_role = true
+    }
+    
+    tenant_b = {
+      min_size       = 2
+      max_size       = 6
+      desired_size   = 2
+      instance_types = ["m5.large"]
+      labels         = { tenant = "tenant-b", isolation = "strict" }
+      
+      taints = [{
+        key    = "tenant"
+        value  = "tenant-b"
+        effect = "NoSchedule"
+      }]
+    }
+  }
+  
+  cluster_addons = {
+    vpc-cni = {
+      addon_version = "v1.14.0"
+    }
+    coredns = {
+      addon_version = "v1.10.1"
+    }
+    kube-proxy = {
+      addon_version = "v1.28.1"
+    }
+    aws-ebs-csi-driver = {
+      addon_version = "v1.24.0"
+    }
+  }
+  
+  # IRSA for service account security
+  enable_irsa                             = true
+  enable_cluster_creator_admin_permissions = false
+  
+  # Fine-grained access control per role
+  access_entries = {
+    cluster_admin = {
+      principal_arn = aws_iam_role.cluster_admin.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+    
+    tenant_a_admin = {
+      principal_arn = aws_iam_role.tenant_a_admin.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        edit = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+          access_scope = {
+            type       = "namespace"
+            namespaces = ["tenant-a"]
+          }
+        }
+      }
+    }
+    
+    tenant_b_admin = {
+      principal_arn = aws_iam_role.tenant_b_admin.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        edit = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+          access_scope = {
+            type       = "namespace"
+            namespaces = ["tenant-b"]
+          }
+        }
+      }
+    }
+    
+    auditor = {
+      principal_arn = aws_iam_role.auditor.arn
+      type          = "STANDARD"
+      
+      policy_associations = {
+        view = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
+  
+  tags = {
+    Environment = "production"
+    MultiTenant = "true"
+    Compliance  = "required"
+    SecurityLevel = "high"
+  }
+}
+
+# Post-deployment network policies (apply with kubectl):
+# kubectl apply -f - <<EOF
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: tenant-isolation
+# spec:
+#   podSelector:
+#     matchLabels:
+#       tenant: tenant-a
+#   policyTypes:
+#   - Ingress
+#   - Egress
+#   ingress:
+#   - from:
+#     - podSelector:
+#         matchLabels:
+#           tenant: tenant-a
+#   egress:
+#   - to:
+#     - podSelector:
+#         matchLabels:
+#           tenant: tenant-a
+#   - to:
+#     - namespaceSelector: {}
+#       podSelector:
+#         matchLabels:
+#           k8s-app: kube-dns
+#     ports:
+#     - protocol: UDP
+#       port: 53
+# EOF
+```
+
 
 ## Security Considerations
 
@@ -1435,7 +2439,25 @@ aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=<vpc-id>"
 
 ## Recent Updates (Synchronized with Code)
 
-### Latest Changes
+### Latest Changes (Current)
+
+#### New Features
+- **EKS Pod Identity Support**: Added `pod_identity_associations` variable for native AWS pod identity credential binding (alternative to IRSA)
+- **Control Plane Scaling Configuration**: Added `control_plane_scaling_config` for dynamic control plane tier management (standard, tier-xl, tier-2xl, tier-4xl)
+- **Zonal Shift Configuration**: Added `zonal_shift_config` for automatic traffic shift during availability zone events
+- **EKS Hybrid Nodes Support**: Added `remote_network_config` for connecting on-premises infrastructure as cluster nodes
+- **Extended Upgrade Policy**: Added `upgrade_policy` for STANDARD (14-month) and EXTENDED (24-month) support windows
+
+#### Improved Add-ons Management
+- **Smart Dependency Management**: VPC CNI add-on now created before node groups (required for pod networking), other add-ons created after nodes exist to allow pod scheduling
+- **Pod Identity Association in Add-ons**: Add-ons can now define pod identity associations directly in their configuration
+- **Timeout Configuration**: Full support for create/update/delete timeout customization per add-on
+
+#### Access Entry Enhancements
+- **Robust Access Policy Association**: Re-implemented access policy association with improved flattening logic for managing multiple policies per access entry
+- **Multiple Policy Support**: Each access entry can now have multiple policy associations with different scopes
+
+### Previous Updates
 - **Fixed cluster_version default**: Updated from erroneous `"1.34llama"` to correct `"1.34"`
 - **Corrected API endpoint access defaults**:
   - `cluster_endpoint_public_access`: Changed from `true` to `false` (private-first approach)
@@ -1448,14 +2470,16 @@ aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=<vpc-id>"
 ### Key Module Features (Verified Current)
 - ✅ EKS Access Entries API with optional legacy aws-auth ConfigMap support
 - ✅ IRSA (IAM Roles for Service Accounts) with OIDC provider
+- ✅ EKS Pod Identity for simplified service account to role binding
 - ✅ Managed Node Groups with AL2023 default AMI and launch template support
 - ✅ Self-Managed Node Groups with Windows and Linux support
 - ✅ Fargate Profiles for serverless pod execution
 - ✅ KMS encryption for secrets and optional CloudWatch logs
 - ✅ IPv4 and IPv6 support with flexible subnet placement
 - ✅ Comprehensive security groups with customizable rules
-- ✅ EKS add-ons management (VPC CNI, CoreDNS, kube-proxy, etc.)
+- ✅ EKS add-ons management with smart dependency handling (VPC CNI before nodes, others after)
 - ✅ CloudWatch logging with configurable retention
+- ✅ Control plane scaling, zonal shift, hybrid nodes, and extended support policies
 
 ## License
 

@@ -1,5 +1,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # AWS Auth ConfigMap (Legacy)
+# Manages the `aws-auth` ConfigMap for granting IAM principals access to the Kubernetes cluster.
+# IMPORTANT: This is a legacy mechanism. For modern EKS access management, use Access Entries.
 # ---------------------------------------------------------------------------------------------------------------------
 # IMPORTANT: To use this feature (`manage_aws_auth_configmap = true`), the caller MUST configure the `kubernetes` provider.
 # The provider should be configured to point to this cluster (endpoint, ca_certificate, token).
@@ -15,7 +17,9 @@
 # }
 
 locals {
-  # Merge the roles
+  # Consolidate all roles to be mapped in the aws-auth ConfigMap.
+  # This includes roles for managed node groups, self-managed node groups,
+  # Fargate pod execution roles, and any user-provided roles.
   aws_auth_roles = concat(
     # Managed Node Group Roles
     [
@@ -35,18 +39,19 @@ locals {
       }
     ],
 
-    # Add Fargate Pod Execution Role if created
+    # Add Fargate Pod Execution Role if created and Fargate profiles exist
     length(var.fargate_profiles) > 0 ? [{
       rolearn  = aws_iam_role.fargate[0].arn
-      username = "system:node:{{SessionName}}"
+      username = "system:node:{{SessionName}}" # Fargate uses SessionName for username
       groups   = ["system:bootstrappers", "system:nodes", "system:node-proxier"]
     }] : [],
 
-    # Add User provided roles
+    # Add any user-defined roles from the input variable
     var.aws_auth_roles
   )
 }
 
+# Resource to create and manage the kubernetes `aws-auth` ConfigMap
 resource "kubernetes_config_map_v1_data" "aws_auth" {
   count = var.manage_aws_auth_configmap ? 1 : 0
 
@@ -61,8 +66,8 @@ resource "kubernetes_config_map_v1_data" "aws_auth" {
     mapAccounts = yamlencode(var.aws_auth_accounts)
   }
 
-  force = true
+  force = true # Force update if the content changes
 
-  # Ensure the cluster is ready before attempting to write
+  # Ensure the EKS cluster is fully ready before attempting to write the ConfigMap
   depends_on = [aws_eks_cluster.this]
 }

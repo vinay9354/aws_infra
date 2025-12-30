@@ -1,3 +1,8 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Cluster Details Outputs
+# These outputs provide fundamental information about the created EKS cluster.
+# ---------------------------------------------------------------------------------------------------------------------
+
 output "cluster_name" {
   description = "The name of the EKS cluster"
   value       = aws_eks_cluster.this.name
@@ -38,6 +43,11 @@ output "cluster_status" {
   value       = aws_eks_cluster.this.status
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Security & Networking Outputs
+# Outputs related to security groups and network configuration.
+# ---------------------------------------------------------------------------------------------------------------------
+
 output "cluster_primary_security_group_id" {
   description = "Cluster security group that was created by Amazon EKS for the cluster. Managed node groups use this security group for control-plane-to-data-plane communication. Referred to as 'Cluster security group' in the EKS console"
   value       = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
@@ -53,6 +63,11 @@ output "node_security_group_id" {
   value       = aws_security_group.node.id
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Authentication & Authorization Outputs
+# Outputs for OIDC provider and related IAM configurations.
+# ---------------------------------------------------------------------------------------------------------------------
+
 output "cluster_oidc_issuer_url" {
   description = "The URL on the EKS cluster for the OpenID Connect identity provider"
   value       = aws_eks_cluster.this.identity[0].oidc[0].issuer
@@ -67,6 +82,11 @@ output "oidc_provider_arn" {
   description = "The ARN of the OIDC Provider if `enable_irsa` is true"
   value       = var.enable_irsa ? aws_iam_openid_connect_provider.oidc_provider[0].arn : null
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# IAM Roles Outputs
+# ARNs and names of IAM roles created for the cluster and node groups.
+# ---------------------------------------------------------------------------------------------------------------------
 
 output "cluster_iam_role_name" {
   description = "IAM role name of the EKS cluster"
@@ -87,6 +107,11 @@ output "self_managed_node_group_iam_role_arns" {
   description = "IAM role ARNs of the self-managed node groups"
   value       = { for k, v in aws_iam_role.self_managed : k => v.arn }
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Compute Resource Outputs
+# Details about managed, self-managed node groups and Fargate profiles.
+# ---------------------------------------------------------------------------------------------------------------------
 
 output "managed_node_groups" {
   description = "Map of outputs for all managed node groups created"
@@ -112,6 +137,11 @@ output "fargate_profiles" {
   value       = aws_eks_fargate_profile.this
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Logging & Encryption Outputs
+# Information about CloudWatch log groups and KMS keys.
+# ---------------------------------------------------------------------------------------------------------------------
+
 output "kms_key_arn" {
   description = "The ARN of the KMS key used for cluster encryption"
   value       = local.kms_key_arn
@@ -121,6 +151,11 @@ output "cloudwatch_log_group_arn" {
   description = "Arn of cloudwatch log group created"
   value       = aws_cloudwatch_log_group.this.arn
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Helper Outputs
+# Utility outputs for interacting with the cluster.
+# ---------------------------------------------------------------------------------------------------------------------
 
 output "kubeconfig_command" {
   description = "Command to update local kubeconfig"

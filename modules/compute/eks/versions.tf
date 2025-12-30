@@ -1,3 +1,8 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Terraform and Provider Versions
+# Defines the required Terraform version and provider versions for this EKS module.
+# ---------------------------------------------------------------------------------------------------------------------
+
 terraform {
   required_version = "~> 1.14.1"
 

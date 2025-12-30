@@ -1,3 +1,7 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# EKS Cluster Resource
+# Provisions the core EKS cluster control plane.
+# ---------------------------------------------------------------------------------------------------------------------
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   version  = var.cluster_version
@@ -35,9 +39,7 @@ resource "aws_eks_cluster" "this" {
 
   enabled_cluster_log_types = var.cluster_enabled_log_types
 
-
-
-  # Envelope Encryption for Secrets
+  # Envelope Encryption for Secrets using KMS
   dynamic "encryption_config" {
     for_each = local.kms_key_arn != null ? [1] : []
     content {
@@ -83,9 +85,9 @@ resource "aws_eks_cluster" "this" {
     }
   }
 
-  # Access Entries (Replacing aws-auth)
+  # Access Configuration using Access Entries (replaces legacy aws-auth ConfigMap for admin permissions)
   access_config {
-    authentication_mode                         = "API_AND_CONFIG_MAP"
+    authentication_mode                         = "API_AND_CONFIG_MAP" # Retain compatibility while using Access Entries
     bootstrap_cluster_creator_admin_permissions = var.enable_cluster_creator_admin_permissions
   }
 
@@ -104,6 +106,7 @@ resource "aws_eks_cluster" "this" {
     }
   }
 
+  # Explicit dependencies to ensure resources are created in the correct order
   depends_on = [
     aws_iam_role_policy_attachment.cluster_policy,
     aws_iam_role_policy_attachment.cluster_vpc_controller,
@@ -124,7 +127,8 @@ resource "aws_eks_cluster" "this" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Access Entries (New AWS Standard for K8s Auth)
+# EKS Access Entry Resources
+# Manages access to the EKS cluster for IAM principals using the modern Access Entry API.
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_eks_access_entry" "this" {
@@ -137,7 +141,10 @@ resource "aws_eks_access_entry" "this" {
   tags              = var.tags
 }
 
-# Re-implementing Access Policy Association to be more robust
+# ---------------------------------------------------------------------------------------------------------------------
+# EKS Access Policy Association Resources
+# Associates policies with EKS Access Entries to define specific permissions within the cluster.
+# ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_eks_access_policy_association" "access_policy" {
   for_each = {

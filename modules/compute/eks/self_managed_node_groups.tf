@@ -1,7 +1,9 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # IAM Role for Self-Managed Nodes
+# Configures IAM roles and instance profiles required for self-managed EC2 nodes to join the EKS cluster.
 # ---------------------------------------------------------------------------------------------------------------------
 
+# Data source for assuming the EC2 service role
 data "aws_iam_policy_document" "self_managed_assume_role" {
   count = length(var.self_managed_node_groups) > 0 ? 1 : 0
   statement {
@@ -14,32 +16,36 @@ data "aws_iam_policy_document" "self_managed_assume_role" {
   }
 }
 
+# IAM Role for each self-managed node group
 resource "aws_iam_role" "self_managed" {
-  for_each = { for k, v in var.self_managed_node_groups : k => v if v.create_iam_role }
-
+  for_each           = { for k, v in var.self_managed_node_groups : k => v if v.create_iam_role }
   name               = "${var.cluster_name}-${each.key}-self-managed-role"
   assume_role_policy = data.aws_iam_policy_document.self_managed_assume_role[0].json
   tags               = merge(var.tags, each.value.tags)
 }
 
+# Attach AmazonEKSWorkerNodePolicy
 resource "aws_iam_role_policy_attachment" "self_managed_worker_policy" {
   for_each   = { for k, v in var.self_managed_node_groups : k => v if v.create_iam_role }
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
   role       = aws_iam_role.self_managed[each.key].name
 }
 
+# Attach AmazonEKS_CNI_Policy for pod networking
 resource "aws_iam_role_policy_attachment" "self_managed_cni_policy" {
   for_each   = { for k, v in var.self_managed_node_groups : k => v if v.create_iam_role }
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
   role       = aws_iam_role.self_managed[each.key].name
 }
 
+# Attach AmazonEC2ContainerRegistryReadOnly for pulling images
 resource "aws_iam_role_policy_attachment" "self_managed_registry_policy" {
   for_each   = { for k, v in var.self_managed_node_groups : k => v if v.create_iam_role }
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   role       = aws_iam_role.self_managed[each.key].name
 }
 
+# Attach additional policies defined in variables
 resource "aws_iam_role_policy_attachment" "self_managed_additional_policies" {
   for_each = {
     for pair in flatten([
@@ -57,16 +63,19 @@ resource "aws_iam_role_policy_attachment" "self_managed_additional_policies" {
   role       = aws_iam_role.self_managed[each.value.group_key].name
 }
 
+# IAM Instance Profile for each self-managed node group
 resource "aws_iam_instance_profile" "self_managed_node_group" {
   for_each = var.self_managed_node_groups
 
   name = "${var.cluster_name}-${each.key}-profile"
-  role = each.value.create_iam_role ? aws_iam_role.self_managed[each.key].name : split("/", each.value.iam_role_arn)[1] # Extract role name from ARN
+  # Use created role if 'create_iam_role' is true, otherwise extract role name from provided ARN
+  role = each.value.create_iam_role ? aws_iam_role.self_managed[each.key].name : split("/", each.value.iam_role_arn)[1]
   tags = var.tags
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Launch Template for Self-Managed Node Groups
+# Configures the launch template used by the Auto Scaling Group for self-managed nodes.
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_launch_template" "self_managed" {
@@ -74,15 +83,17 @@ resource "aws_launch_template" "self_managed" {
 
   name_prefix = "${var.cluster_name}-${each.key}-self-"
 
-  # Logic: Use provided AMI ID -> Fallback to Windows Optimized -> Fallback to AL2023 Optimized
+  # Image ID logic: Use provided AMI ID, otherwise fall back to EKS optimized Windows or AL2023 AMI
   image_id = each.value.ami_id != null ? each.value.ami_id : (each.value.platform == "windows" ? local.default_windows_ami_id : local.default_linux_ami_id)
 
   instance_type = each.value.instance_type
 
-  user_data = each.value.platform == "windows" ? base64encode(templatefile("${path.module}/templates/windows_user_data.tpl", { cluster_name = var.cluster_name
+  # User data for bootstrapping nodes
+  user_data = each.value.platform == "windows" ? base64encode(templatefile("${path.module}/templates/windows_user_data.tpl", {
+    cluster_name         = var.cluster_name
     cluster_endpoint     = aws_eks_cluster.this.endpoint
     cluster_auth_base64  = aws_eks_cluster.this.certificate_authority[0].data
-    bootstrap_extra_args = each.value.bootstrap_extra_args
+    bootstrap_extra_args = each.value.bootstrap_extra_args # Additional arguments for Windows bootstrap script
     })) : base64encode(templatefile("${path.module}/templates/al2023_user_data.tpl", {
     cluster_name        = var.cluster_name
     cluster_endpoint    = aws_eks_cluster.this.endpoint
@@ -101,15 +112,14 @@ resource "aws_launch_template" "self_managed" {
   block_device_mappings {
     device_name = "/dev/xvda"
     ebs {
-      volume_size = 20 # Default
+      volume_size = 20 # Default root volume size
       volume_type = "gp3"
       encrypted   = true
       kms_key_id  = local.kms_key_arn
     }
   }
 
-  # Enforce IMDSv2 for Security
-
+  # Enforce IMDSv2 for enhanced security
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
@@ -134,6 +144,7 @@ resource "aws_launch_template" "self_managed" {
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Auto Scaling Group (Self-Managed)
+# Manages the Auto Scaling Group for self-managed EC2 nodes.
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "aws_autoscaling_group" "this" {
@@ -144,11 +155,10 @@ resource "aws_autoscaling_group" "this" {
   min_size            = each.value.min_size
   vpc_zone_identifier = length(each.value.subnet_ids != null ? each.value.subnet_ids : []) > 0 ? each.value.subnet_ids : (length(var.node_group_subnet_ids) > 0 ? var.node_group_subnet_ids : var.subnet_ids)
 
-  # Ensure VPC CNI addon is created/active before self-managed instances boot so that
-  # the aws-node daemonset is available and nodes can become Ready.
-  # Note: referencing the addon will require `vpc-cni` to exist in var.cluster_addons.
-  # If `vpc-cni` is optional in your configuration and might be absent, consider
-  # applying in two phases instead (create cluster + vpc-cni first).
+  # Explicit dependency to ensure VPC CNI addon is available before nodes boot
+  # This ensures proper pod networking configuration during node bootstrapping.
+  # Note: referencing the addon requires `vpc-cni` to exist in var.cluster_addons.
+  # If `vpc-cni` is optional, consider a multi-phase apply.
   depends_on = [
     aws_eks_addon.vpc_cni["vpc-cni"],
   ]
