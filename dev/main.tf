@@ -245,6 +245,8 @@ module "dev_eks" {
   cluster_endpoint_public_access       = local.eks_cluster_config.cluster_endpoint_public_access
   cluster_endpoint_public_access_cidrs = local.eks_cluster_config.cluster_endpoint_public_access_cidrs
 
+  access_entries = lookup(local.eks_cluster_config, "access_entries", [])
+
   # Cluster logging
   cluster_enabled_log_types = local.eks_cluster_config.enable_cluster_logging ? [
     "api",

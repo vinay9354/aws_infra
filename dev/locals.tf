@@ -208,6 +208,24 @@ locals {
     cluster_endpoint_public_access       = false
     cluster_endpoint_public_access_cidrs = []
 
+    access_entries = {
+      # Admin user
+      admin_user = {
+        principal_arn = "arn:aws:iam::516311263797:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_5fe30505cf49ba4a"
+        type          = "STANDARD"
+
+        policy_associations = {
+          admin = {
+            policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+            access_scope = {
+              type = "cluster"
+            }
+          }
+        }
+      }
+    }
+
+
     # IRSA (IAM Roles for Service Accounts)
     enable_irsa = true
 
