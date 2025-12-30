@@ -12,7 +12,7 @@ resource "aws_launch_template" "this" {
 
   # This prevents passing 'null' which causes API errors, and ensures a valid AMI is always present in the LT.
 
-  image_id               = each.value.ami_id != null ? each.value.ami_id : local.default_linux_ami_id
+  image_id               = lookup(each.value, "ami_id", null)
   update_default_version = true
 
   block_device_mappings {
@@ -89,7 +89,7 @@ resource "aws_eks_node_group" "this" {
     }
   }
 
-  ami_type       = each.value.ami_type
+  ami_type       = (each.value.create_launch_template && each.value.ami_id != null) ? "CUSTOM" : each.value.ami_type
   capacity_type  = each.value.capacity_type
   instance_types = each.value.instance_types
 
