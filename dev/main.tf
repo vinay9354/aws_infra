@@ -73,9 +73,10 @@ module "private_subnets" {
   map_public_ip_on_launch = false
 
   # Main route: NAT instance for outbound internet access
-  route_cidr_block  = "0.0.0.0/0"
-  route_target_type = "eni"
-  route_target_id   = module.ec2_instances["vinay-dev-infra-nat-instance"].primary_network_interface_id
+  # route_cidr_block  = "0.0.0.0/0"
+  # route_target_type = "eni"
+  # route_target_id   = module.ec2_instances["vinay-dev-infra-nat-instance"].primary_network_interface_id
+  route_target_id = null
 
   # Additional routes
   extra_routes = each.value.extra_routes
