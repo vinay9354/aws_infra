@@ -11,8 +11,8 @@ repos:
         - --args=--output-file=README.md
         - --args=--output-mode=inject
         - --args=--sort-by=required
-    - id: infracost_breakdown
-      args:
-        - --args=--path=.
-      verbose: true # Always show costs
+    # - id: infracost_breakdown
+    #   args:
+    #     - --args=--path=.
+    #   verbose: true # Always show costs
     
