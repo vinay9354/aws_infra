@@ -51,7 +51,7 @@ variable "existing_route_table_id" {
 variable "route_cidr_block" {
   description = "Destination CIDR block for the main route in the route table (e.g. 0.0.0.0/0)"
   type        = string
-  default     = "0.0.0.0/0"
+  default     = null
 }
 
 variable "route_ipv6_cidr_block" {
