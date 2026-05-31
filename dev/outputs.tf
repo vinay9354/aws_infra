@@ -68,79 +68,79 @@ output "security_groups" {
   sensitive = true
 }
 
-# --------------------------------
-# EC2 Instance Outputs
-# --------------------------------
-output "ec2_instance_ids" {
-  description = "Map of EC2 instance IDs"
-  value = {
-    for k, v in module.ec2_instances : k => v.instance_id
-  }
-  sensitive = true
-}
+# # --------------------------------
+# # EC2 Instance Outputs
+# # --------------------------------
+# output "ec2_instance_ids" {
+#   description = "Map of EC2 instance IDs"
+#   value = {
+#     for k, v in module.ec2_instances : k => v.instance_id
+#   }
+#   sensitive = true
+# }
 
-output "ec2_instances" {
-  description = "Detailed information about EC2 instances"
-  value = {
-    for k, v in module.ec2_instances : k => {
-      instance_id                  = v.instance_id
-      instance_arn                 = v.instance_arn
-      instance_state               = v.instance_state
-      instance_type                = v.instance_type
-      private_ip                   = v.private_ip
-      public_ip                    = v.public_ip
-      private_dns                  = v.private_dns
-      public_dns                   = v.public_dns
-      availability_zone            = v.availability_zone
-      key_name                     = v.key_name
-      subnet_id                    = v.subnet_id
-      security_groups              = v.security_groups
-      iam_instance_profile         = v.iam_instance_profile
-      primary_network_interface_id = v.primary_network_interface_id
-    }
-  }
-  sensitive = true
-}
+# output "ec2_instances" {
+#   description = "Detailed information about EC2 instances"
+#   value = {
+#     for k, v in module.ec2_instances : k => {
+#       instance_id                  = v.instance_id
+#       instance_arn                 = v.instance_arn
+#       instance_state               = v.instance_state
+#       instance_type                = v.instance_type
+#       private_ip                   = v.private_ip
+#       public_ip                    = v.public_ip
+#       private_dns                  = v.private_dns
+#       public_dns                   = v.public_dns
+#       availability_zone            = v.availability_zone
+#       key_name                     = v.key_name
+#       subnet_id                    = v.subnet_id
+#       security_groups              = v.security_groups
+#       iam_instance_profile         = v.iam_instance_profile
+#       primary_network_interface_id = v.primary_network_interface_id
+#     }
+#   }
+#   sensitive = true
+# }
 
-output "nat_instance_ip" {
-  description = "Public IP address of the NAT instance"
-  value       = try(module.ec2_instances["vinay-dev-infra-nat-instance"].public_ip, null)
-  sensitive   = true
-}
+# output "nat_instance_ip" {
+#   description = "Public IP address of the NAT instance"
+#   value       = try(module.ec2_instances["vinay-dev-infra-nat-instance"].public_ip, null)
+#   sensitive   = true
+# }
 
-output "nat_instance_id" {
-  description = "Instance ID of the NAT instance"
-  value       = try(module.ec2_instances["vinay-dev-infra-nat-instance"].instance_id, null)
-  sensitive   = true
-}
+# output "nat_instance_id" {
+#   description = "Instance ID of the NAT instance"
+#   value       = try(module.ec2_instances["vinay-dev-infra-nat-instance"].instance_id, null)
+#   sensitive   = true
+# }
 
-output "nat_instance_primary_eni" {
-  description = "Primary network interface ID of the NAT instance"
-  value       = try(module.ec2_instances["vinay-dev-infra-nat-instance"].primary_network_interface_id, null)
-  sensitive   = true
-}
+# output "nat_instance_primary_eni" {
+#   description = "Primary network interface ID of the NAT instance"
+#   value       = try(module.ec2_instances["vinay-dev-infra-nat-instance"].primary_network_interface_id, null)
+#   sensitive   = true
+# }
 
-# --------------------------------
-# EC2 Key Pair Outputs
-# --------------------------------
-output "key_pair_names" {
-  description = "Map of key pair names created for EC2 instances"
-  value = {
-    for k, v in module.ec2_instances : k => v.key_pair_name if v.key_pair_name != null
-  }
-  sensitive = true
-}
+# # --------------------------------
+# # EC2 Key Pair Outputs
+# # --------------------------------
+# output "key_pair_names" {
+#   description = "Map of key pair names created for EC2 instances"
+#   value = {
+#     for k, v in module.ec2_instances : k => v.key_pair_name if v.key_pair_name != null
+#   }
+#   sensitive = true
+# }
 
-output "key_pair_ssm_parameters" {
-  description = "Map of SSM parameter names storing private keys"
-  value = {
-    for k, v in module.ec2_instances : k => {
-      private_key_param = v.private_key_ssm_parameter_name
-      public_key_param  = v.public_key_ssm_parameter_name
-    } if v.private_key_ssm_parameter_name != null
-  }
-  sensitive = true
-}
+# output "key_pair_ssm_parameters" {
+#   description = "Map of SSM parameter names storing private keys"
+#   value = {
+#     for k, v in module.ec2_instances : k => {
+#       private_key_param = v.private_key_ssm_parameter_name
+#       public_key_param  = v.public_key_ssm_parameter_name
+#     } if v.private_key_ssm_parameter_name != null
+#   }
+#   sensitive = true
+# }
 
 # --------------------------------
 # IAM Policy Outputs
